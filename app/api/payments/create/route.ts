@@ -83,6 +83,7 @@ export async function POST(request: Request) {
               payment_method_types: ["qrph"],
 
               description: `Alamatika Credit Purchase #${purchase.id}`,
+              reference_number: `ALAMATIKA-${purchase.id}`,
 
               success_url:
                 `${process.env.NEXT_PUBLIC_SITE_URL}/wallet?payment=success&purchase=${purchase.id}`,
