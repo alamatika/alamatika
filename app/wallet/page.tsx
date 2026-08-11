@@ -76,15 +76,6 @@ useEffect(() => {
 }, []);
 
 async function buyCredits(packageAmount: number) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    alert("Please login first.");
-    return;
-  }
-
   try {
     const response = await fetch("/api/payments/create", {
       method: "POST",

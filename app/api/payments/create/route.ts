@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { supabase } from "../../../../lib/supabaseClient";
+import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 
 export async function POST(request: Request) {
   try {
+    const supabase = await createSupabaseServerClient();
+
     const { credits } = await request.json();
 
     if (![100, 300, 600, 1200].includes(credits)) {
