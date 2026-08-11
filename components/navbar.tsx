@@ -407,6 +407,14 @@ if (
   🔖 Bookmarks
 </Link>
 
+<Link
+  href="/wallet"
+  onClick={() => setProfileMenuOpen(false)}
+  className="block px-5 py-4 hover:bg-zinc-800"
+>
+  💎 Wallet
+</Link>
+
 
       <button
   onClick={logout}
@@ -434,7 +442,7 @@ if (
 </div>
 
 {mobileMenuOpen && (
-  <div className="fixed top-20 left-0 w-full bg-black/95 backdrop-blur-md z-40 flex flex-col items-center py-8 gap-6 md:hidden">
+  <div className="fixed top-20 left-0 w-full bg-black/95 backdrop-blur-md z-40 flex flex-col items-center py-5 gap-3 md:hidden text-sm">
 
     <Link href="/" onClick={() => setMobileMenuOpen(false)}>
       Home
@@ -489,6 +497,13 @@ if (
   onClick={() => setMobileMenuOpen(false)}
 >
   🔖 Bookmarks
+</Link>
+
+<Link
+  href="/wallet"
+  onClick={() => setMobileMenuOpen(false)}
+>
+  💎 Wallet
 </Link>
 
         <button

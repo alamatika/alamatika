@@ -111,323 +111,353 @@ async function buyCredits(packageAmount: number) {
 }
 
 async function unlockWithCredits() {
-
-const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    alert("Please log in first.");
-    return;
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("credits")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile) {
-    alert("Profile not found.");
-    return;
-  }
-
-  if (profile.credits < 25) {
-    alert("Not enough Credits.");
-    return;
-  }
-
-  const { data: chapter } = await supabase
-    .from("chapters")
-    .select("id")
-    .eq("chapter", Number(chapterNumber))
-    .single();
-
-  if (!chapter) {
+  if (!chapterNumber) {
     alert("Chapter not found.");
     return;
   }
 
-  // Check if already unlocked
-  const { data: existing } = await supabase
-    .from("chapter_unlocks")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("chapter_id", chapter.id)
-    .maybeSingle();
+  try {
+    const { data: chapter } = await supabase
+      .from("chapters")
+      .select("id")
+      .eq("chapter", Number(chapterNumber))
+      .single();
 
-  if (existing) {
-    router.push(`/read/chapter-${chapterNumber}`);
-    return;
-  }
+    if (!chapter) {
+      alert("Chapter not found.");
+      return;
+    }
 
-  // Deduct credits
-  const { error: creditError } = await supabase
-    .from("profiles")
-    .update({
-      credits: profile.credits - 25,
-    })
-    .eq("id", user.id);
-
-  if (creditError) {
-    alert(creditError.message);
-    return;
-  }
-
-  // Save unlock
-  const { error: unlockError } = await supabase
-    .from("chapter_unlocks")
-    .insert({
-      user_id: user.id,
-      chapter_id: chapter.id,
+    const response = await fetch("/api/chapters/unlock", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        chapterId: chapter.id,
+      }),
     });
 
-  if (unlockError) {
-    alert(unlockError.message);
-    return;
+    const result = await response.json();
+
+    if (!response.ok) {
+      alert(result.error ?? "Could not unlock the chapter.");
+      return;
+    }
+
+    await loadWallet();
+
+    alert("Chapter Unlocked!");
+
+    router.push(`/read/chapter-${chapterNumber}`);
+  } catch (error) {
+    console.error("Unlock error:", error);
+    alert("Something went wrong unlocking the chapter.");
   }
-
-
-
-  // Save wallet transaction
-await supabase
-  .from("credit_transactions")
-  .insert({
-    user_id: user.id,
-    amount: -25,
-    type: "unlock",
-    description: `Unlocked Chapter ${chapterNumber}`,
-  });
-
-  await loadWallet();
-
-  alert("Chapter Unlocked!");
-
-  router.push(`/read/chapter-${chapterNumber}`);
 }
 
+    return (
+    <main className="min-h-screen bg-black text-white px-4 py-24">
 
-  return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-      <div className="max-w-xl text-center">
+      <div className="max-w-lg mx-auto">
 
-        <h1 className="text-5xl font-bold text-yellow-400 mb-6">
-          💎 Wallet
-        </h1>
+        {/* Navigation */}
+        <div className="flex justify-between items-center mb-6">
 
-        <p className="text-gray-300 mb-10">
-          Purchase Credits to unlock premium chapters.
-        </p>
-
-        <div className="bg-zinc-900 rounded-2xl p-6 mb-8 border border-yellow-500/30">
-  <p className="text-gray-400 text-sm">Current Balance</p>
-
-  <h2 className="text-5xl font-bold text-yellow-400 mt-2">
-    💎 {credits}
-  </h2>
-</div>
-
-        <div className="flex flex-col gap-4">
-
-          <div className="bg-zinc-900 rounded-2xl p-6">
-
-<h2 className="text-2xl font-bold text-yellow-400">
-Top Up Wallet
-</h2>
-
-<div className="grid gap-5">
-
-  {chapterNumber ? (
-  credits >= 25 ? (
-    <button
-      onClick={unlockWithCredits}
-      className="inline-block px-8 py-4 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition"
-    >
-      💎 Use 25 Credits
-    </button>
-  ) : (
-    <button
-      className="inline-block px-8 py-4 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition"
-    >
-      💎 Buy Credits
-    </button>
-  )
-) : null}
-
-  <button
-  onClick={() => buyCredits(100)}
-  className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-2xl p-6 text-left transition"
->
-
-    <div className="flex justify-between items-center">
-
-      <div>
-        <h3 className="text-3xl font-bold text-yellow-400">
-          ₱100
-        </h3>
-
-        <p className="text-gray-400 mt-2">
-          💎 Receive 100 Credits
-        </p>
-
-        <p className="text-sm text-gray-500 mt-3">
-          Perfect for unlocking 4 chapters.
-        </p>
-      </div>
-
-      <span className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold">
-        Buy
-      </span>
-
-    </div>
-
-  </button>
-
-  <button
-  onClick={() => buyCredits(300)}
-  className="relative bg-zinc-800 border-2 border-yellow-500 hover:border-yellow-400 rounded-2xl p-6 text-left transition"
->
-
-    <span className="absolute -top-3 right-5 bg-yellow-500 text-black px-3 py-1 rounded-full text-xs font-bold">
-      MOST POPULAR
-    </span>
-
-    <div className="flex justify-between items-center">
-
-      <div>
-        <h3 className="text-3xl font-bold text-yellow-400">
-          ₱300
-        </h3>
-
-        <p className="text-gray-400 mt-2">
-          💎 Receive 300 Credits
-        </p>
-
-        <p className="text-sm text-gray-500 mt-3">
-          Great for regular readers.
-        </p>
-      </div>
-
-      <span className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold">
-        Buy
-      </span>
-
-    </div>
-
-  </button>
-
-  <button
-  onClick={() => buyCredits(600)}
-  className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-2xl p-6 text-left transition"
->
-
-    <div className="flex justify-between items-center">
-
-      <div>
-        <h3 className="text-3xl font-bold text-yellow-400">
-          ₱600
-        </h3>
-
-        <p className="text-gray-400 mt-2">
-          💎 Receive 600 Credits
-        </p>
-
-        <p className="text-sm text-gray-500 mt-3">
-          Unlock 24 chapters.
-        </p>
-      </div>
-
-      <span className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold">
-        Buy
-      </span>
-
-    </div>
-
-  </button>
-
-  <button
-  onClick={() => buyCredits(1200)}
-  className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-2xl p-6 text-left transition"
->
-
-    <div className="flex justify-between items-center">
-
-      <div>
-        <h3 className="text-3xl font-bold text-yellow-400">
-          ₱1200
-        </h3>
-
-        <p className="text-gray-400 mt-2">
-          💎 Receive 1200 Credits
-        </p>
-
-        <p className="text-sm text-gray-500 mt-3">
-          Best for binge reading.
-        </p>
-      </div>
-
-      <span className="bg-yellow-500 text-black px-5 py-2 rounded-xl font-bold">
-        Buy
-      </span>
-
-    </div>
-
-  </button>
-
-</div>
-</div>
-          
-
-<div className="bg-zinc-900 rounded-2xl p-6 mt-8 text-left">
-  <h2 className="text-2xl font-bold text-yellow-400 mb-4">
-    Recent Activity
-  </h2>
-
-  {transactions.length === 0 ? (
-    <p className="text-gray-500">
-      No transactions yet.
-    </p>
-  ) : (
-    <div className="space-y-4">
-      {transactions.map((item) => (
-        <div
-          key={item.id}
-          className="flex justify-between border-b border-zinc-700 pb-3"
-        >
-          <div>
-            <p>{item.description}</p>
-
-            <p className="text-gray-500 text-sm">
-              {new Date(item.created_at).toLocaleString()}
-            </p>
-          </div>
-
-          <div
-            className={`font-bold ${
-              item.amount > 0
-                ? "text-green-400"
-                : "text-red-400"
-            }`}
+          <button
+            onClick={() => router.back()}
+            className="text-gray-400 hover:text-yellow-400 transition text-sm"
           >
-            {item.amount > 0 ? "+" : ""}
-            {item.amount}
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+            ← Back
+          </button>
 
           <Link
-  href="/read"
-  className="inline-block mt-8 px-6 py-3 border border-yellow-500 rounded-full text-yellow-400 hover:bg-yellow-500 hover:text-black transition"
->
-  ← Back to Chapters
-</Link>
+            href="/"
+            className="text-gray-400 hover:text-yellow-400 transition text-sm"
+          >
+            🏠 Home
+          </Link>
+
+        </div>
+
+
+        {/* Wallet Header */}
+        <div className="text-center mb-6">
+
+          <h1 className="text-3xl font-bold text-yellow-400">
+            💎 Wallet
+          </h1>
+
+          <p className="text-gray-400 text-sm mt-2">
+            Purchase Credits to unlock premium chapters.
+          </p>
+
+        </div>
+
+
+        {/* Current Balance */}
+        <div className="bg-zinc-900 rounded-2xl p-4 mb-6 border border-yellow-500/30 text-center">
+
+          <p className="text-gray-500 text-xs">
+            Current Balance
+          </p>
+
+          <h2 className="text-3xl font-bold text-yellow-400 mt-1">
+            💎 {credits}
+          </h2>
+
+        </div>
+
+
+        {/* Top Up Wallet */}
+        <div className="bg-zinc-900 rounded-2xl p-4">
+
+          <h2 className="text-xl font-bold text-yellow-400 mb-4">
+            Top Up Wallet
+          </h2>
+
+
+          <div className="grid gap-3">
+
+            {/* Chapter Unlock */}
+            {chapterNumber ? (
+              credits >= 25 ? (
+                <button
+                  onClick={unlockWithCredits}
+                  className="w-full px-5 py-3 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition text-sm"
+                >
+                  💎 Use 25 Credits
+                </button>
+              ) : (
+                <button
+                  onClick={() => buyCredits(100)}
+                  className="w-full px-5 py-3 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition text-sm"
+                >
+                  💎 Buy Credits
+                </button>
+              )
+            ) : null}
+
+
+            {/* ₱100 */}
+            <button
+              onClick={() => buyCredits(100)}
+              className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-xl p-4 text-left transition"
+            >
+
+              <div className="flex justify-between items-center gap-3">
+
+                <div>
+
+                  <h3 className="text-2xl font-bold text-yellow-400">
+                    ₱100
+                  </h3>
+
+                  <p className="text-gray-400 text-sm mt-1">
+                    💎 Receive 100 Credits
+                  </p>
+
+                  <p className="text-gray-500 text-xs mt-2">
+                    Perfect for unlocking 4 chapters.
+                  </p>
+
+                </div>
+
+                <span className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm shrink-0">
+                  Buy
+                </span>
+
+              </div>
+
+            </button>
+
+
+            {/* ₱300 */}
+            <button
+              onClick={() => buyCredits(300)}
+              className="relative bg-zinc-800 border border-yellow-500 hover:border-yellow-400 rounded-xl p-4 text-left transition"
+            >
+
+              <span className="absolute -top-2 right-4 bg-yellow-500 text-black px-2 py-1 rounded-full text-[10px] font-bold">
+                MOST POPULAR
+              </span>
+
+              <div className="flex justify-between items-center gap-3">
+
+                <div>
+
+                  <h3 className="text-2xl font-bold text-yellow-400">
+                    ₱300
+                  </h3>
+
+                  <p className="text-gray-400 text-sm mt-1">
+                    💎 Receive 300 Credits
+                  </p>
+
+                  <p className="text-gray-500 text-xs mt-2">
+                    Great for regular readers.
+                  </p>
+
+                </div>
+
+                <span className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm shrink-0">
+                  Buy
+                </span>
+
+              </div>
+
+            </button>
+
+
+            {/* ₱600 */}
+            <button
+              onClick={() => buyCredits(600)}
+              className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-xl p-4 text-left transition"
+            >
+
+              <div className="flex justify-between items-center gap-3">
+
+                <div>
+
+                  <h3 className="text-2xl font-bold text-yellow-400">
+                    ₱600
+                  </h3>
+
+                  <p className="text-gray-400 text-sm mt-1">
+                    💎 Receive 600 Credits
+                  </p>
+
+                  <p className="text-gray-500 text-xs mt-2">
+                    Unlock 24 chapters.
+                  </p>
+
+                </div>
+
+                <span className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm shrink-0">
+                  Buy
+                </span>
+
+              </div>
+
+            </button>
+
+
+            {/* ₱1200 */}
+            <button
+              onClick={() => buyCredits(1200)}
+              className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-xl p-4 text-left transition"
+            >
+
+              <div className="flex justify-between items-center gap-3">
+
+                <div>
+
+                  <h3 className="text-2xl font-bold text-yellow-400">
+                    ₱1200
+                  </h3>
+
+                  <p className="text-gray-400 text-sm mt-1">
+                    💎 Receive 1200 Credits
+                  </p>
+
+                  <p className="text-gray-500 text-xs mt-2">
+                    Best for binge reading.
+                  </p>
+
+                </div>
+
+                <span className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm shrink-0">
+                  Buy
+                </span>
+
+              </div>
+
+            </button>
+
+          </div>
+
+        </div>
+
+
+        {/* Recent Activity */}
+        <div className="bg-zinc-900 rounded-2xl p-4 mt-6">
+
+          <h2 className="text-xl font-bold text-yellow-400 mb-4">
+            Recent Activity
+          </h2>
+
+          {transactions.length === 0 ? (
+
+            <p className="text-gray-500 text-sm">
+              No transactions yet.
+            </p>
+
+          ) : (
+
+            <div className="space-y-3">
+
+              {transactions.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="flex justify-between gap-4 border-b border-zinc-700 pb-3"
+                >
+
+                  <div className="min-w-0">
+
+                    <p className="text-sm">
+                      {item.description}
+                    </p>
+
+                    <p className="text-gray-500 text-xs mt-1">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+
+                  </div>
+
+                  <div
+                    className={`font-bold text-sm shrink-0 ${
+                      item.amount > 0
+                        ? "text-green-400"
+                        : "text-red-400"
+                    }`}
+                  >
+                    {item.amount > 0 ? "+" : ""}
+                    {item.amount}
+                  </div>
+
+                </div>
+
+              ))}
+
+            </div>
+
+          )}
+
+        </div>
+
+
+        {/* Bottom Back */}
+        <div className="flex justify-center gap-3 mt-6">
+
+          <button
+            onClick={() => router.back()}
+            className="px-5 py-2.5 border border-zinc-700 rounded-full text-gray-400 hover:border-yellow-500 hover:text-yellow-400 transition text-sm"
+          >
+            ← Back
+          </button>
+
+          <Link
+            href="/"
+            className="px-5 py-2.5 border border-yellow-500 rounded-full text-yellow-400 hover:bg-yellow-500 hover:text-black transition text-sm"
+          >
+            🏠 Home
+          </Link>
 
         </div>
 
       </div>
+
     </main>
   );
 }

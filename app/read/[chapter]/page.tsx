@@ -6,7 +6,9 @@ import ChapterNavigation from "../../../components/ChapterNavigation";
 import ChapterRating from "../../../components/ChapterRating";
 import ChapterComments from "../../../components/ChapterComments";
 import ChapterImages from "../../../components/ChapterImages";
+import ChapterUnlockButton from "../../../components/ChapterUnlockButton";
 import { notFound } from "next/navigation";
+
 
 
 export default async function ChapterPage({
@@ -123,24 +125,18 @@ if (chapterData.locked && !alreadyUnlocked) {
         </div>
 
         {credits >= 25 ? (
-
-          <a
-            href={`/wallet?redirect=/read/chapter-${chapterNumber}`}
-            className="inline-block px-8 py-4 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition"
-          >
-            Unlock Now
-          </a>
-
-        ) : (
-
-          <a
-            href={`/wallet?redirect=/read/chapter-${chapterNumber}`}
-            className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
-          >
-            Go to Wallet
-          </a>
-
-        )}
+  <ChapterUnlockButton
+    chapterId={String(chapterData.id)}
+    chapterNumber={chapterNumber}
+  />
+) : (
+  <a
+    href={`/wallet?redirect=/read/chapter-${chapterNumber}`}
+    className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+  >
+    💎 Buy Credits
+  </a>
+)}
 
       </div>
 
