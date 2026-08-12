@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
+import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
+
+    const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
 
     const { credits } = await request.json();
 
@@ -37,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     // Create our own pending purchase first.
-    const { data: purchase, error: purchaseError } = await supabase
+    const { data: purchase, error: purchaseError } = await supabaseAdmin
       .from("credit_purchases")
       .insert({
         user_id: user.id,
@@ -104,7 +116,7 @@ export async function POST(request: Request) {
       console.error("PayMongo error:", result);
 
       // Remove the pending purchase if PayMongo failed.
-      await supabase
+      await supabaseAdmin
         .from("credit_purchases")
         .delete()
         .eq("id", purchase.id);
@@ -132,7 +144,7 @@ export async function POST(request: Request) {
     }
 
     // Store PayMongo's checkout-session ID.
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from("credit_purchases")
       .update({
         payment_reference: checkoutSessionId,
