@@ -79,13 +79,11 @@ export async function POST(request: Request) {
     // PayMongo's test signature or live signature.
     type PayMongoWebhookEvent = {
   data?: {
-    attributes?: {
-      type?: string;
-      livemode?: boolean;
-      data?: {
-        attributes?: {
-          reference_number?: string;
-        };
+    type?: string;
+    livemode?: boolean;
+    data?: {
+      attributes?: {
+        reference_number?: string;
       };
     };
   };
@@ -102,7 +100,7 @@ try {
       );
     }
 
-    const isLiveMode = event?.data?.attributes?.livemode === true;
+    const isLiveMode = event?.data?.livemode === true;
 
     const receivedSignature = isLiveMode
       ? liveSignature
@@ -120,7 +118,7 @@ try {
       );
     }
 
-    const eventType = event?.data?.attributes?.type;
+    const eventType = event?.data?.type;
 
     // We only fulfill successful Hosted Checkout payments.
     if (eventType !== "checkout_session.payment.paid") {
@@ -129,7 +127,7 @@ try {
       });
     }
 
-    const checkoutSession = event?.data?.attributes?.data;
+    const checkoutSession = event?.data?.data;
 
     const referenceNumber =
       checkoutSession?.attributes?.reference_number;
