@@ -83,8 +83,9 @@ async function buyCredits(packageAmount: number) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        credits: packageAmount,
-      }),
+  credits: packageAmount,
+  redirect,
+}),
     });
 
     const result = await response.json();

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   }
 );
 
-    const { credits } = await request.json();
+    const { credits, redirect } = await request.json();
 
     if (![100, 300, 600, 1200].includes(credits)) {
       return NextResponse.json(
@@ -100,10 +100,14 @@ export async function POST(request: Request) {
               reference_number: `ALAMATIKA-${purchase.id}`,
 
               success_url:
-                `${process.env.NEXT_PUBLIC_SITE_URL}/wallet?payment=success&purchase=${purchase.id}`,
+  `${process.env.NEXT_PUBLIC_SITE_URL}/wallet?payment=success&purchase=${purchase.id}${
+    redirect ? `&redirect=${encodeURIComponent(redirect)}` : ""
+  }`,
 
               cancel_url:
-                `${process.env.NEXT_PUBLIC_SITE_URL}/wallet?payment=cancelled&purchase=${purchase.id}`,
+  `${process.env.NEXT_PUBLIC_SITE_URL}/wallet?payment=cancelled&purchase=${purchase.id}${
+    redirect ? `&redirect=${encodeURIComponent(redirect)}` : ""
+  }`,
             },
           },
         }),
