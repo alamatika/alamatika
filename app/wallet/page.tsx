@@ -78,6 +78,9 @@ useEffect(() => {
 
 async function buyCredits(packageAmount: number) {
   try {
+    console.log("WALLET PAYMENT REDIRECT:", redirect);
+console.log("WALLET CURRENT URL:", window.location.href);
+
     const response = await fetch("/api/payments/create", {
       method: "POST",
       headers: {
