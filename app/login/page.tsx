@@ -28,7 +28,6 @@ async function handleLogin() {
   alert("Welcome back to Alamatika!");
 
   window.location.href= "/";
-  router.push("/");
 }
 
   return (
