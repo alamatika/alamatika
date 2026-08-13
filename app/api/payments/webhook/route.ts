@@ -93,3 +93,11 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function GET() {
+  console.log("========== WEBHOOK GET TEST ==========");
+
+  return NextResponse.json({
+    webhook: "working",
+  });
+}
