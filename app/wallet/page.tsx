@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { supabase } from "../../lib/supabaseClient";
 import { Suspense, useEffect, useState } from "react";
+import Navbar from "../../components/navbar";
 
 function PurchaseContent() {
   const searchParams = useSearchParams();
@@ -149,6 +150,8 @@ async function unlockWithCredits() {
 }
 
     return (
+      <>
+      <Navbar />
     <main className="min-h-screen bg-black text-white px-4 py-24">
 
       <div className="max-w-lg mx-auto">
@@ -451,6 +454,7 @@ async function unlockWithCredits() {
       </div>
 
     </main>
+    </>
   );
 }
 
