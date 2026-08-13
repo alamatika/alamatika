@@ -119,18 +119,18 @@ export async function POST(request: Request) {
         .digest("hex");
 
     let event: {
+  data?: {
+    attributes?: {
+      type?: string;
+      livemode?: boolean;
       data?: {
-        type?: string;
         attributes?: {
-          livemode?: boolean;
-          data?: {
-            attributes?: {
-              reference_number?: string;
-            };
-          };
+          reference_number?: string;
         };
       };
     };
+  };
+};
 
     try {
       event = JSON.parse(rawBody);
@@ -155,23 +155,25 @@ export async function POST(request: Request) {
     }
 
     console.log(
-      "EVENT TYPE:",
-      event?.data?.type
-    );
+  "EVENT TYPE:",
+  event?.data?.attributes?.type
+);
 
     console.log(
-      "LIVEMODE:",
-      event?.data?.attributes?.livemode
-    );
+  "LIVEMODE:",
+  event?.data?.attributes?.livemode
+);
 
     const referenceNumber =
       event?.data?.attributes?.data?.attributes
         ?.reference_number;
 
-    console.log(
-      "REFERENCE:",
-      referenceNumber
-    );
+    
+console.log(
+  "REFERENCE:",
+  event?.data?.attributes?.data?.attributes?.reference_number
+);
+
 
     const isLiveMode =
       event?.data?.attributes?.livemode === true;
@@ -208,7 +210,7 @@ export async function POST(request: Request) {
     );
 
     const eventType =
-      event?.data?.type;
+  event?.data?.attributes?.type;
 
     // Only process successful Checkout payments.
     if (
@@ -221,8 +223,13 @@ export async function POST(request: Request) {
       );
 
       return NextResponse.json({
-        received: true,
-      });
+  received: true,
+  diagnostic: true,
+  eventType: event?.data?.attributes?.type,
+  livemode: event?.data?.attributes?.livemode,
+  referenceNumber:
+    event?.data?.attributes?.data?.attributes?.reference_number,
+});
     }
 
     if (!referenceNumber) {
