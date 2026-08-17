@@ -311,6 +311,28 @@ async function reportComment(
   alert("✅ Comment reported.");
 }
 
+async function deleteCommunityImage(imageUrl: string) {
+  if (!imageUrl) return;
+
+  try {
+    const url = new URL(imageUrl);
+    const path = url.pathname.split("/community-images/")[1];
+
+    if (!path) return;
+
+    const filePath = decodeURIComponent(path);
+
+    const { error } = await supabase.storage
+      .from("community-images")
+      .remove([filePath]);
+
+    if (error) {
+      console.error("Failed to delete image:", error);
+    }
+  } catch (error) {
+    console.error("Could not process image URL:", error);
+  }
+}
 
 async function deletePost() {
 
@@ -322,30 +344,44 @@ async function deletePost() {
 
   if (!confirmDelete) return;
 
+  // Delete image from Supabase Storage first
+  if (post?.image) {
+    await deleteCommunityImage(post.image);
+  }
+
+  // Delete comments
   await supabase
-  .from("comments")
-  .delete()
-  .eq("post_id", Number(id));
+    .from("comments")
+    .delete()
+    .eq("post_id", Number(id));
 
-await supabase
-  .from("community_likes")
-  .delete()
-  .eq("post_id", Number(id));
+  // Delete likes
+  await supabase
+    .from("community_likes")
+    .delete()
+    .eq("post_id", Number(id));
 
-const { error } = await supabase
-  .from("community")
-  .delete()
-  .eq("id", Number(id))
-  .eq("user_id", currentUser.id);
+  // Delete bookmarks
+  await supabase
+    .from("bookmarks")
+    .delete()
+    .eq("post_id", Number(id));
 
-if (error) {
-  alert(error.message);
-  return;
-}
+  // Delete the post itself
+  const { error } = await supabase
+    .from("community")
+    .delete()
+    .eq("id", Number(id))
+    .eq("user_id", currentUser.id);
 
-alert("Post deleted!");
+  if (error) {
+    alert(error.message);
+    return;
+  }
 
-router.push("/community");
+  alert("Post deleted!");
+
+  router.push("/community");
 }
 
 async function deleteComment(commentId: number) {

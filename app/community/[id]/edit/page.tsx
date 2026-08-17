@@ -39,6 +39,28 @@ export default function EditPostPage() {
     if (id) loadPost();
   }, [id]);
 
+  async function deleteCommunityImage(imageUrl: string) {
+  if (!imageUrl) return;
+
+  try {
+    const url = new URL(imageUrl);
+    const path = url.pathname.split("/community-images/")[1];
+
+    if (!path) return;
+
+    const filePath = decodeURIComponent(path);
+
+    const { error } = await supabase.storage
+      .from("community-images")
+      .remove([filePath]);
+
+    if (error) {
+      console.error("Failed to delete old image:", error);
+    }
+  } catch (error) {
+    console.error("Could not process old image URL:", error);
+  }
+}
   
   async function uploadImage(file: File) {
 
@@ -89,23 +111,30 @@ export default function EditPostPage() {
 
         const filename = `${Date.now()}.jpg`;
 
-        const { error } = await supabase.storage
-          .from("community-images")
-          .upload(filename, blob);
+const oldImage = image;
 
-        if (error) {
-          alert(error.message);
-          setUploading(false);
-          return;
-        }
+const { error } = await supabase.storage
+  .from("community-images")
+  .upload(filename, blob);
 
-        const { data } = supabase.storage
-          .from("community-images")
-          .getPublicUrl(filename);
+if (error) {
+  alert(error.message);
+  setUploading(false);
+  return;
+}
 
-        setImage(data.publicUrl);
+const { data } = supabase.storage
+  .from("community-images")
+  .getPublicUrl(filename);
 
-        setUploading(false);
+setImage(data.publicUrl);
+
+// Delete the old image after the new one succeeds
+if (oldImage) {
+  await deleteCommunityImage(oldImage);
+}
+
+setUploading(false);
 
       }, "image/jpeg", 0.75);
 

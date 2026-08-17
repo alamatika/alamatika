@@ -14,6 +14,7 @@ export default function NewCommunityPost() {
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   
   async function uploadImage(file: File) {
