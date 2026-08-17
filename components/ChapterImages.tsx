@@ -8,7 +8,6 @@ export default function ChapterImages({
   images: string[];
 }) {
 
-const [isFullscreen, setIsFullscreen] = useState(false);
 const [loadedImages, setLoadedImages] = useState<boolean[]>([]);
 
 useEffect(() => {
@@ -47,36 +46,15 @@ useEffect(() => {
     }
   };
 
-  const handleFullscreenChange = () => {
-    setIsFullscreen(!!document.fullscreenElement);
-  };
 
   window.addEventListener("keydown", handleKeyDown);
-  document.addEventListener(
-    "fullscreenchange",
-    handleFullscreenChange
-  );
 
   return () => {
     window.removeEventListener("keydown", handleKeyDown);
-    document.removeEventListener(
-      "fullscreenchange",
-      handleFullscreenChange
-    );
+
   };
 }, []);
 
-  async function toggleFullscreen() {
-    const reader = document.getElementById("reader");
-
-    if (!reader) return;
-
-    if (!document.fullscreenElement) {
-      await reader.requestFullscreen();
-    } else {
-      await document.exitFullscreen();
-    }
-  }
 
  return (
   <div id="reader">
@@ -110,10 +88,12 @@ useEffect(() => {
         })
       }
       className={`
-        max-w-full
-        rounded-lg
-        ${loadedImages[index] ? "block" : "hidden"}
-      `}
+  w-full
+  max-w-3xl
+  mx-auto
+  rounded-lg
+  ${loadedImages[index] ? "block" : "hidden"}
+`}
     />
 
   </div>

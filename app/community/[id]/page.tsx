@@ -55,6 +55,8 @@ export default function PostPage() {
 
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingCommentText, setEditingCommentText] = useState("");
+  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [openCommentMenuId, setOpenCommentMenuId] = useState<number | null>(null);
 
   const [bookmarked, setBookmarked] = useState(false);
 
@@ -595,7 +597,7 @@ return () => {
 
       <Navbar />
 
-      <section className="max-w-5xl mx-auto pt-32 px-6">
+      <section className="max-w-5xl mx-auto pt-28 md:pt-32 px-4 md:px-6">
 
         <Link
           href="/community"
@@ -615,7 +617,7 @@ return () => {
             <img
               src={post.image}
               alt={post.title || "Post image"}
-              className="w-full rounded-3xl border border-yellow-500"
+              className="w-full max-h-[500px] md:max-h-none object-contain rounded-3xl border border-yellow-500"
             />
 
           )}
@@ -652,7 +654,7 @@ return () => {
 
 </div>
 
-          <h1 className="text-5xl font-bold mt-3">
+          <h1 className="text-3xl md:text-5xl font-bold mt-3 break-words">
   {post.title}
 </h1>
 
@@ -669,15 +671,15 @@ return () => {
 
 </div>
 
-          <div className="mt-10 text-lg leading-9 whitespace-pre-wrap text-gray-300">
+          <div className="mt-8 md:mt-10 text-base md:text-lg leading-7 md:leading-9 whitespace-pre-wrap text-gray-300">
             {post.content}
           </div>
 
-          <div className="mt-8 flex items-center gap-4">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
 
   <button
     onClick={toggleLike}
-    className={`px-3 py-3 rounded-xl font-bold transition ${
+    className={`px-4 py-3 rounded-xl font-bold transition ${
       liked
         ? "bg-red-500 hover:bg-red-400 text-white"
         : "bg-yellow-500 hover:bg-yellow-400 text-black"
@@ -686,53 +688,90 @@ return () => {
     {liked ? "❤️ Liked" : "🤍 Like"}
   </button>
 
-  <span className="text-gray-400 font-semibold">
+  <span className="text-gray-400 font-semibold px-1">
     ❤️ {likes}
-    </span>
+  </span>
 
-
-    <button
-  onClick={toggleBookmark}
-  className={`px-6 py-3 rounded-xl font-bold transition ${
-    bookmarked
-      ? "bg-blue-600 hover:bg-blue-500 text-white"
-      : "bg-zinc-700 hover:bg-zinc-600 text-white"
-  }`}
->
-  {bookmarked ? "📖 Saved" : "🔖 Save"}
-</button>
-
-<button
-  onClick={reportPost}
-  className="bg-zinc-700 hover:bg-zinc-600 text-white px-6 py-3 rounded-xl font-bold transition"
->
-  🚩
-</button>
-
-  {currentUser?.id === post.user_id && (
-
-  <div className="flex gap-3">
-
-    <Link href={`/community/${post.id}/edit`}>
-      <button className="bg-yellow-300 hover:bg-yellow-400 text-black px-4 py-3 rounded-xl font-bold transition">
-        ✏️ Edit Post
-      </button>
-    </Link>
-  
   <button
-    onClick={deletePost}
-    className="bg-red-600 hover:bg-red-500 text-white px-4 py-3 rounded-xl font-bold transition"
+    onClick={toggleBookmark}
+    className={`px-4 py-3 rounded-xl font-bold transition ${
+      bookmarked
+        ? "bg-blue-600 hover:bg-blue-500 text-white"
+        : "bg-zinc-700 hover:bg-zinc-600 text-white"
+    }`}
   >
-    🗑 Delete Post
+    {bookmarked ? "📖 Saved" : "🔖 Save"}
   </button>
 
-  </div>
+  <div className="relative">
 
-)}
+  <button
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setOpenMenuId(
+        openMenuId === post.id
+          ? null
+          : post.id
+      );
+    }}
+    className="w-11 h-11 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white flex items-center justify-center font-bold transition"
+    aria-label="Post options"
+  >
+    ⋮
+  </button>
+
+  {openMenuId === post.id && (
+    <div
+      className="absolute left-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden z-30"
+      onClick={(e) => e.stopPropagation()}
+    >
+
+      {/* Report */}
+      {currentUser?.id !== post.user_id && (
+        <button
+          onClick={() => {
+            setOpenMenuId(null);
+            reportPost();
+          }}
+          className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 transition"
+        >
+          🚩 Report Post
+        </button>
+      )}
+
+      {/* Owner options */}
+      {currentUser?.id === post.user_id && (
+        <>
+          <Link
+            href={`/community/${post.id}/edit`}
+            onClick={() => setOpenMenuId(null)}
+            className="block px-4 py-3 text-sm hover:bg-zinc-700 transition"
+          >
+            ✏️ Edit Post
+          </Link>
+
+          <button
+            onClick={() => {
+              setOpenMenuId(null);
+              deletePost();
+            }}
+            className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 transition"
+          >
+            🗑️ Delete Post
+          </button>
+        </>
+      )}
+
+    </div>
+  )}
 
 </div>
 
+  
 
+</div>
 
           <div className="mt-20">
 
@@ -752,80 +791,161 @@ return () => {
 
     {comments.map((comment) => (
 
-      <div
-        key={comment.id}
-        className="bg-zinc-900 rounded-2xl p-6"
+  <div
+    key={comment.id}
+    className="relative bg-zinc-900 rounded-2xl p-6"
+  >
+
+    {/* Comment Menu */}
+    <div className="absolute top-4 right-4">
+
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+
+          setOpenCommentMenuId(
+            openCommentMenuId === comment.id
+              ? null
+              : comment.id
+          );
+        }}
+        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-zinc-800 hover:text-white transition"
+        aria-label="Comment options"
       >
+        ⋮
+      </button>
 
-        <div className="flex items-center gap-3">
+      {openCommentMenuId === comment.id && (
+        <div
+          className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden z-30"
+          onClick={(e) => e.stopPropagation()}
+        >
 
-  <Link href={`/profile/${comment.user_id}`}>
+          {/* Owner options */}
+          {currentUser?.id === comment.user_id && (
+            <>
+              <button
+                onClick={() => {
+                  setEditingCommentId(comment.id);
+                  setEditingCommentText(comment.content);
+                  setOpenCommentMenuId(null);
+                }}
+                className="w-full text-left px-4 py-3 text-sm hover:bg-zinc-700 transition"
+              >
+                ✏️ Edit Comment
+              </button>
 
-    {comment.avatar ? (
+              <button
+                onClick={() => {
+                  setOpenCommentMenuId(null);
+                  deleteComment(comment.id);
+                }}
+                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 transition"
+              >
+                🗑️ Delete Comment
+              </button>
+            </>
+          )}
 
-      <img
-        src={comment.avatar}
-        alt={comment.username}
-        className="w-12 h-12 rounded-full object-cover object-center border border-yellow-500"
+          {/* Report option */}
+          {currentUser && currentUser.id !== comment.user_id && (
+            <button
+              onClick={() => {
+                setOpenCommentMenuId(null);
+                reportComment(
+                  comment.id,
+                  comment.user_id
+                );
+              }}
+              className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 transition"
+            >
+              🚩 Report Comment
+            </button>
+          )}
+
+        </div>
+      )}
+
+    </div>
+
+    {/* Comment User */}
+
+    <div className="flex items-center gap-3">
+
+      <Link href={`/profile/${comment.user_id}`}>
+
+        {comment.avatar ? (
+
+          <img
+            src={comment.avatar}
+            alt={comment.username}
+            className="w-12 h-12 rounded-full object-cover object-center border border-yellow-500"
+          />
+
+        ) : (
+
+          <div className="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center">
+            👤
+          </div>
+
+        )}
+
+      </Link>
+
+      <div>
+
+        <Link
+          href={`/profile/${comment.user_id}`}
+          className="font-bold text-yellow-400 hover:text-yellow-300 transition"
+        >
+          {comment.username}
+        </Link>
+
+      </div>
+
+    </div>
+
+    {/* Comment Date */}
+
+    <p className="text-gray-500 text-sm mt-1">
+
+      {formatDate(comment.created_at)}
+
+      {comment.edited && (
+        <span className="ml-2 text-gray-400">
+          • Edited
+        </span>
+      )}
+
+    </p>
+
+    {/* Comment Content */}
+
+    {editingCommentId === comment.id ? (
+
+      <textarea
+        value={editingCommentText}
+        onChange={(e) =>
+          setEditingCommentText(e.target.value)
+        }
+        className="w-full mt-4 rounded-xl bg-zinc-800 border border-zinc-700 p-3"
+        rows={3}
       />
 
     ) : (
 
-      <div className="w-12 h-12 rounded-full bg-zinc-700 flex items-center justify-center">
-        👤
-      </div>
+      <p className="mt-4 whitespace-pre-wrap text-gray-300">
+        {comment.content}
+      </p>
 
     )}
 
-  </Link>
+    {/* Edit Mode Buttons */}
 
-  <div>
+    {editingCommentId === comment.id && (
+      <div className="flex gap-4 mt-3">
 
-    <Link
-      href={`/profile/${comment.user_id}`}
-      className="font-bold text-yellow-400 hover:text-yellow-300 transition"
-    >
-      {comment.username}
-    </Link>
-
-
-  </div>
-
-</div>
-
-        <p className="text-gray-500 text-sm mt-1">
-  {formatDate(comment.created_at)}
-  {comment.edited && (
-    <span className="ml-2 text-gray-400">
-      • Edited
-    </span>
-  )}
-</p>
-
-        {editingCommentId === comment.id ? (
-
-  <textarea
-    value={editingCommentText}
-    onChange={(e) => setEditingCommentText(e.target.value)}
-    className="w-full mt-4 rounded-xl bg-zinc-800 border border-zinc-700 p-3"
-    rows={3}
-  />
-
-) : (
-
-  <p className="mt-4 whitespace-pre-wrap text-gray-300">
-    {comment.content}
-  </p>
-
-)}
-
-  <div className="flex gap-4 mt-3">
-
-  {currentUser?.id === comment.user_id ? (
-
-    editingCommentId === comment.id ? (
-
-      <>
         <button
           onClick={() => saveComment(comment.id)}
           className="text-green-400 hover:text-green-300 text-sm font-bold"
@@ -842,47 +962,13 @@ return () => {
         >
           ❌ Cancel
         </button>
-      </>
-
-    ) : (
-
-      <>
-        <button
-          onClick={() => {
-            setEditingCommentId(comment.id);
-            setEditingCommentText(comment.content);
-          }}
-          className="text-yellow-400 hover:text-yellow-300 text-sm font-bold"
-        >
-          ✏️ Edit
-        </button>
-
-        <button
-          onClick={() => deleteComment(comment.id)}
-          className="text-red-400 hover:text-red-300 text-sm font-bold"
-        >
-          🗑 Delete
-        </button>
-      </>
-
-    )
-
-  ) : currentUser ? (
-
-    <button
-      onClick={() => reportComment(comment.id, comment.user_id)}
-      className="text-red-400 hover:text-red-300 text-sm font-bold"
-    >
-      🚩 Report
-    </button>
-
-  ) : null}
-
-</div>
 
       </div>
+    )}
 
-    ))}
+  </div>
+
+))}
 
   </div>
 

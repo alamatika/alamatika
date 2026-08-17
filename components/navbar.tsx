@@ -25,6 +25,7 @@ const aboutMenuRef = useRef<HTMLDivElement>(null);
   const [avatar, setAvatar] = useState("");
   const [notificationCount, setNotificationCount] = useState(0);
   const [username, setUsername] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -105,12 +106,13 @@ useEffect(() => {
   if (data.user) {
   const { data: profile } = await supabase
   .from("profiles")
-  .select("avatar, username")
+  .select("avatar, username, is_admin")
   .eq("id", data.user.id)
   .single();
 
 setAvatar(profile?.avatar ?? "");
 setUsername(profile?.username ?? "");
+setIsAdmin(profile?.is_admin ?? false);
 }
   
       const { count } = await supabase
@@ -188,37 +190,24 @@ if (
   };
 }, []);
 
+function handleLogoClick() {
+  clickCount.current++;
 
-   function handleLogoClick() {
-   clickCount.current++;
-
-   if (clickTimer.current) {
+  if (clickTimer.current) {
     clearTimeout(clickTimer.current);
-   }
+  }
 
-   if (clickCount.current === 3) {
-   clickCount.current = 0;
+  if (clickCount.current === 8) {
+    clickCount.current = 0;
 
-   const loggedIn =
-     localStorage.getItem("alamatika-admin") === "true";
+    router.push("/creator");
 
-   if (loggedIn) {
-     router.push("/admin");
-   } else {
-    router.push("/admin/login");
-   }
-
-   return;
-
- }
+    return;
+  }
 
   clickTimer.current = setTimeout(() => {
-    if (clickCount.current === 1) {
-      router.push("/");
-    }
-
     clickCount.current = 0;
-  }, 400);
+  }, 800);
 }
   
   return (
@@ -391,6 +380,16 @@ if (
   👤 View Profile
 </Link>
 
+{isAdmin && (
+  <Link
+    href="/admin"
+    onClick={() => setProfileMenuOpen(false)}
+    className="block px-5 py-4 text-yellow-400 hover:bg-zinc-800 border-t border-zinc-800"
+  >
+    🛡️ View as Admin
+  </Link>
+)}
+
 <Link
   href="/profile/posts"
   onClick={() => setProfileMenuOpen(false)}
@@ -407,12 +406,21 @@ if (
   🔖 Bookmarks
 </Link>
 
+
 <Link
   href="/wallet"
   onClick={() => setProfileMenuOpen(false)}
   className="block px-5 py-4 hover:bg-zinc-800"
 >
   💎 Wallet
+</Link>
+
+<Link
+  href="/profile/settings"
+  onClick={() => setProfileMenuOpen(false)}
+  className="block px-5 py-4 hover:bg-zinc-800 border-t border-zinc-800"
+>
+  ⚙️ Account Settings
 </Link>
 
 
@@ -481,6 +489,16 @@ if (
           👤 {username}
         </Link>
 
+        {isAdmin && (
+  <Link
+    href="/admin"
+    onClick={() => setMobileMenuOpen(false)}
+    className="text-yellow-400"
+  >
+    🛡️ View as Admin
+  </Link>
+)}
+
         <Link href="/notifications" onClick={() => setMobileMenuOpen(false)}>
           Notifications
         </Link>
@@ -504,6 +522,13 @@ if (
   onClick={() => setMobileMenuOpen(false)}
 >
   💎 Wallet
+</Link>
+
+<Link
+  href="/profile/settings"
+  onClick={() => setMobileMenuOpen(false)}
+>
+  ⚙️ Account Settings
 </Link>
 
         <button

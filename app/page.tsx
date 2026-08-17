@@ -14,6 +14,18 @@ export default function Home() {
   Record<string, string>
 >({});
 
+const characterX = Number(
+  appearance.homepage_character_video_x ?? 50
+);
+
+const characterY = Number(
+  appearance.homepage_character_video_y ?? 70
+);
+
+const characterWidth = Number(
+  appearance.homepage_character_video_width ?? 35
+);
+
 useEffect(() => {
   async function loadAppearance() {
     const { data } = await supabase
@@ -35,15 +47,50 @@ useEffect(() => {
 }, []);
 
   return (
-    <main className="min-h-screen bg-cover bg-center bg-no-repeat text-white flex flex-col items-center justify-center px-6"
-  style={{
-  backgroundImage: `url(${
-    appearance.homepage_background ??
-    "/backgrounds/home-v3.jpg"
-  })`,
-}}
->
-<Navbar />
+    <main
+  className="relative min-h-screen bg-cover bg-center bg-no-repeat text-white flex flex-col items-center justify-center px-6">
+
+  {/* BACKGROUND VIDEO */}
+  {appearance.homepage_background_video ? (
+    <video
+      src={appearance.homepage_background_video}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className="absolute inset-0 w-full h-full object-cover -z-10"
+    />
+  ) : (
+    /* FALLBACK IMAGE */
+    <div
+      className="absolute inset-0 bg-cover bg-center bg-no-repeat -z-10"
+      style={{
+        backgroundImage: `url(${
+          appearance.homepage_background ??
+          "/backgrounds/home-v3.jpg"
+        })`,
+      }}
+    />
+  )}
+
+  <Navbar />
+
+  {appearance.homepage_character_video && (
+  <video
+    src={appearance.homepage_character_video}
+    autoPlay
+    muted
+    loop
+    playsInline
+    className="absolute z-0 pointer-events-none object-contain"
+    style={{
+      left: `${characterX}%`,
+      top: `${characterY}%`,
+      width: `${characterWidth}%`,
+      transform: "translate(-50%, -50%)",
+    }}
+  />
+)}
       <Image
   src={
     appearance.homepage_logo ??
@@ -53,15 +100,15 @@ useEffect(() => {
   width={900}
   height={320}
   priority
-  className="mt-16 w-[90%] max-w-[900px] h-auto"
+  className="relative z-10 mt-16 w-[90%] max-w-[900px] h-auto"
 />
 
-      <p className="mt-8 text-lg sm:text-xl md:text-2xl text-center max-w-2xl text-gray-300 italic px-4">
+      <p className="relative z-10 mt-8 text-lg sm:text-xl md:text-2xl text-center max-w-2xl text-gray-300 italic px-4">
         Every mountain, sea, land and sky has stories.
       </p>
 
       <Link href="/read">
-      <button className="mt-12 w-full max-w-sm px-8 py-4 rounded-full border border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black transition text-lg font-semibold">
+      <button className="relative z-10 mt-12 w-full max-w-sm px-8 py-4 rounded-full border border-yellow-500 text-yellow-400 hover:bg-yellow-500 hover:text-black transition text-lg font-semibold">
         BEGIN THE JOURNEY
       </button>
       </Link>
@@ -69,7 +116,7 @@ useEffect(() => {
       <div className="mt-6 text-center">
   <Link
     href="/community"
-    className="text-gray-400 hover:text-yellow-400 transition"
+    className="relative z-10 text-gray-400 hover:text-yellow-400 transition"
   >
     Join our community →
   </Link>

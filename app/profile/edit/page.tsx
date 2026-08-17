@@ -49,6 +49,17 @@ export default function EditProfilePage() {
   }, [router]);
 
   async function uploadAvatar(file: File) {
+  const { data: userData } = await supabase.auth.getUser();
+
+  if (!userData.user) {
+    alert("You must be logged in.");
+    return;
+  }
+
+  const userId = userData.user.id;
+
+  // Remember the old avatar
+  const oldAvatar = avatar;
 
   const img = new Image();
   const reader = new FileReader();
@@ -59,7 +70,6 @@ export default function EditProfilePage() {
     img.src = reader.result as string;
 
     img.onload = async () => {
-
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
 
@@ -71,28 +81,91 @@ export default function EditProfilePage() {
       ctx?.drawImage(img, 0, 0, size, size);
 
       canvas.toBlob(async (blob) => {
-
         if (!blob) return;
 
-        const filename = `${Date.now()}.jpg`;
+        const filename = `${userId}-${Date.now()}.jpg`;
 
-        const { error } = await supabase.storage
+        // Upload new avatar first
+        const { error: uploadError } = await supabase.storage
           .from("avatars")
-          .upload(filename, blob);
+          .upload(filename, blob, {
+            contentType: "image/jpeg",
+            upsert: false,
+          });
 
-        if (error) {
-          alert(error.message);
+        if (uploadError) {
+          alert(uploadError.message);
           return;
         }
 
+        // Get new public URL
         const { data } = supabase.storage
           .from("avatars")
           .getPublicUrl(filename);
 
-        setAvatar(data.publicUrl);
+        const newAvatarUrl = data.publicUrl;
 
+        // Update the profile with the new avatar
+        const { error: updateError } = await supabase
+          .from("profiles")
+          .update({
+            avatar: newAvatarUrl,
+          })
+          .eq("id", userId);
+
+        if (updateError) {
+          // Database update failed, remove the newly uploaded file
+          await supabase.storage
+            .from("avatars")
+            .remove([filename]);
+
+          alert(updateError.message);
+          return;
+        }
+
+        // Show the new avatar immediately
+        setAvatar(newAvatarUrl);
+
+        // Delete the OLD avatar from Storage
+        if (oldAvatar && oldAvatar.startsWith("http")) {
+          try {
+            const url = new URL(oldAvatar);
+
+            const marker = "/storage/v1/object/public/avatars/";
+
+            const index = url.pathname.indexOf(marker);
+
+            if (index !== -1) {
+              const oldPath = decodeURIComponent(
+                url.pathname.substring(
+                  index + marker.length
+                )
+              );
+
+              if (oldPath && oldPath !== filename) {
+                const { error: deleteError } =
+                  await supabase.storage
+                    .from("avatars")
+                    .remove([oldPath]);
+
+                if (deleteError) {
+                  console.error(
+                    "Old avatar cleanup error:",
+                    deleteError
+                  );
+                }
+              }
+            }
+          } catch (error) {
+            console.error(
+              "Failed to delete old avatar:",
+              error
+            );
+          }
+        }
+
+        alert("Avatar updated!");
       }, "image/jpeg", 0.8);
-
     };
   };
 }
@@ -163,16 +236,22 @@ export default function EditProfilePage() {
 
   )}
 
+  <label className="mt-6 inline-flex items-center justify-center gap-2 cursor-pointer bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl transition shadow-lg">
+  📤 Choose Avatar Image
+
   <input
     type="file"
     accept="image/*"
-    className="mt-6"
+    className="hidden"
     onChange={(e) => {
       if (e.target.files?.[0]) {
         uploadAvatar(e.target.files[0]);
       }
+
+      e.target.value = "";
     }}
   />
+</label>
 
 </div>
 

@@ -45,16 +45,21 @@ export default function AdminUsers() {
   fetchUsers();
 }, []);
 
- async function toggleBan(userId: string, current: boolean) {
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      banned: !current,
-    })
-    .eq("id", userId);
+ async function toggleBan(userId: string) {
+  const response = await fetch("/api/admin/toggle-ban", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+    }),
+  });
 
-  if (error) {
-    alert(error.message);
+  const result = await response.json();
+
+  if (!response.ok) {
+    alert(result.error);
     return;
   }
 
@@ -263,7 +268,7 @@ export default function AdminUsers() {
   </button>
 
   <button
-    onClick={() => toggleBan(user.id, user.banned)}
+    onClick={() => toggleBan(user.id)}
     className={`px-5 py-3 rounded-xl font-bold transition ${
       user.banned
         ? "bg-green-600 hover:bg-green-500"

@@ -15,6 +15,7 @@ type Profile = {
   avatar: string | null;
   credits: number;
   email_private: boolean;
+  is_admin: boolean;
 };
   
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -40,6 +41,8 @@ const [email, setEmail] = useState("");
     .eq("id", user.id)
     .single();
 
+    console.log("PROFILE:", data);
+console.log("IS ADMIN:", data?.is_admin);
   setProfile(data);
 }
 
@@ -172,6 +175,15 @@ Manage Wallet →
     >
       🔒 Security Settings
     </Link>
+
+    {profile?.is_admin && (
+  <Link
+    href="/admin"
+    className="rounded-xl bg-red-600 hover:bg-red-500 px-5 py-4 font-bold transition text-center"
+  >
+    🛡️ View as Admin
+  </Link>
+)}
 
     <button
       onClick={handleLogout}

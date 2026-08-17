@@ -44,7 +44,7 @@ const [image, setImage] = useState("");
   href="/admin"
   className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition mb-8"
 >
-  🏠 Creator Studio
+  🏠 Admin Studio
 </Link>
 
           <h1 className="text-5xl font-bold text-yellow-400 mb-10">

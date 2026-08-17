@@ -53,26 +53,40 @@ export default function EditUserPage() {
     loadUser();
   }, [id]);
 
-  async function toggleBan() {
-    if (!user) return;
+async function toggleBan() {
+  if (!user) return;
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        banned: !user.banned,
-      })
-      .eq("id", user.id);
+  const confirmed = window.confirm(
+    user.banned
+      ? "Are you sure you want to unban this user?"
+      : "Are you sure you want to ban this user?"
+  );
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
+  if (!confirmed) return;
 
-    setUser({
-      ...user,
+  const response = await fetch("/api/admin/toggle-ban", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId: user.id,
       banned: !user.banned,
-    });
+    }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    alert(result.error || "Failed to update user.");
+    return;
   }
+
+  setUser({
+    ...user,
+    banned: !user.banned,
+  });
+}
 
   if (loading) {
     return (

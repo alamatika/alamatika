@@ -28,7 +28,7 @@ export default function AdminGuard({
 
       if (!session?.user) {
         if (mounted) {
-          router.replace("/admin/login");
+          router.replace("/login");
         }
         return;
       }

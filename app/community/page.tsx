@@ -30,6 +30,7 @@ const [selectedCategory, setSelectedCategory] = useState("All");
 const [sortMode, setSortMode] = useState<"Newest" | "Trending">("Newest");
 const [currentUserId, setCurrentUserId] = useState("");
 const [visiblePosts, setVisiblePosts] = useState(10);
+const [openMenuId, setOpenMenuId] = useState<number | null>(null);
 
 
 const [appearance, setAppearance] = useState<
@@ -195,6 +196,67 @@ async function togglePin(postId: number, pinned: boolean) {
 
 }
 
+async function deletePost(postId: number) {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete this post?"
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("community")
+    .delete()
+    .eq("id", postId)
+    .eq("user_id", currentUserId);
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  // Remove the post from the screen immediately
+  setPosts((prev) =>
+    prev.filter((post) => post.id !== postId)
+  );
+
+  setOpenMenuId(null);
+}
+
+async function reportPost(post: CommunityPost) {
+  if (!currentUserId) {
+    alert("Please log in to report a post.");
+    return;
+  }
+
+  if (currentUserId === post.user_id) {
+    alert("You can't report your own post.");
+    return;
+  }
+
+  const reason = prompt(
+    "Why are you reporting this post?\n\nExamples:\nSpam\nHarassment\nNSFW\nCopyright"
+  );
+
+  if (!reason) return;
+
+  const { error } = await supabase
+    .from("reports")
+    .insert({
+      reporter_id: currentUserId,
+      post_id: post.id,
+      reason: reason.trim(),
+    });
+
+  if (error) {
+    console.error("REPORT ERROR:", error);
+    alert(error.message);
+    return;
+  }
+
+  setOpenMenuId(null);
+
+  alert("✅ Report submitted. Thank you!");
+}
 
    return (
     <main
@@ -213,22 +275,13 @@ async function togglePin(postId: number, pinned: boolean) {
 </h1>
 
 <p className="text-center text-gray-300 mb-10 md:mb-16 px-2">
-  Connect with fellow readers by sharing fan art, theories, questions, and discussions.
+  Connect with fellow readers by sharing arts, questions, and discussions.
 </p>
 
 <div className="bg-black/50 rounded-3xl p-8 border border-yellow-500/20">
 
   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
 
-    <div>
-      <h2 className="text-2xl font-bold text-yellow-400">
-        Community Feed
-      </h2>
-
-      <p className="text-gray-300 mt-2">
-        Share updates, fan art, theories, and discuss Alamatika.
-      </p>
-    </div>
 
     <div className="flex gap-3 flex-wrap">
 
@@ -360,9 +413,88 @@ return (
 .map((post) => (
 
   <div
-    key={post.id}
-    className="bg-zinc-900 rounded-2xl p-6 hover:border hover:border-yellow-500 transition"
+  key={post.id}
+  className="relative bg-zinc-900 rounded-2xl p-6 hover:border hover:border-yellow-500 transition"
+>
+
+  {/* Post Menu */}
+<div className="absolute top-4 right-4">
+
+  <button
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      setOpenMenuId(
+        openMenuId === post.id ? null : post.id
+      );
+    }}
+    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-zinc-800 hover:text-white transition"
+    aria-label="Post options"
   >
+    ⋮
+  </button>
+
+  {openMenuId === post.id && (
+    <div
+      className="absolute right-0 mt-2 w-48 bg-zinc-800 border border-zinc-700 rounded-xl shadow-2xl overflow-hidden z-30"
+      onClick={(e) => e.stopPropagation()}
+    >
+
+      {/* Owner options */}
+      {currentUserId === post.user_id && (
+        <>
+          <Link
+            href={`/community/${post.id}/edit`}
+            onClick={() => setOpenMenuId(null)}
+            className="block px-4 py-3 text-sm hover:bg-zinc-700 transition"
+          >
+            ✏️ Edit Post
+          </Link>
+
+          <button
+  onClick={() => {
+    deletePost(post.id);
+  }}
+  className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-zinc-700 transition"
+>
+  🗑️ Delete Post
+</button>
+        </>
+      )}
+
+      {/* Report option for everyone except the owner */}
+      {currentUserId !== post.user_id && (
+  <button
+    onClick={() => {
+      reportPost(post);
+    }}
+    className="w-full text-left px-4 py-3 text-sm hover:bg-zinc-700 transition"
+  >
+    🚩 Report Post
+  </button>
+)}
+
+        {/* Admin option */}
+      {isAdmin && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpenMenuId(null);
+            togglePin(post.id, post.is_pinned);
+          }}
+          className="w-full text-left px-4 py-3 text-sm text-yellow-400 hover:bg-zinc-700 transition"
+        >
+          {post.is_pinned ? "📌 Unpin Post" : "📌 Pin Post"}
+        </button>
+      )}
+
+      </div>
+  )}
+
+</div>
+
+
 
     <p className="text-yellow-400 font-semibold">
       {post.category}
@@ -433,21 +565,6 @@ return (
   </Link>
 )}
 
-
-    {isAdmin && (
-
-  <button
-    onClick={(e) => {
-      e.preventDefault();
-      e.stopPropagation();
-  togglePin(post.id, post.is_pinned);
-}}
-    className="mt-3 text-yellow-400 hover:text-yellow-300 text-sm font-bold transition"
-  >
-    {post.is_pinned ? "📌 Unpin Post" : "📌 Pin Post"}
-  </button>
-
-)}
 
     <Link href={`/community/${post.id}`}>
   <p className="text-gray-300 mt-4 line-clamp-3 text-sm md:text-base max-w-2xl hover:text-yellow-300 transition">

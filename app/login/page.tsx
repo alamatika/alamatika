@@ -25,9 +25,34 @@ async function handleLogin() {
     return;
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    window.location.href = "/";
+    return;
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError) {
+    console.error("Profile error:", profileError);
+    window.location.href = "/";
+    return;
+  }
+
   alert("Welcome back to Alamatika!");
 
-  window.location.href= "/";
+  if (profile?.is_admin) {
+    window.location.href = "/admin";
+  } else {
+    window.location.href = "/";
+  }
 }
 
   return (

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import Navbar from "../../../components/navbar";
 import Link from "next/link";
+import AdminGuard from "../../../components/AdminGuard";
 
 type Lore = {
   id: number;
@@ -59,6 +60,7 @@ export default function LoreManager() {
   }
 
   return (
+    <AdminGuard>
     <main>
       <section className="max-w-6xl mx-auto pt-28 md:pt-32 px-5 sm:px-6">
 
@@ -66,7 +68,7 @@ export default function LoreManager() {
           href="/admin"
           className="inline-flex items-center gap-2 text-yellow-400 hover:text-yellow-300 transition mb-8"
         >
-          🏠 Creator Studio
+          🏠 Admin Studio
         </Link>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-yellow-400">
@@ -152,5 +154,6 @@ export default function LoreManager() {
 
       </section>
     </main>
+    </AdminGuard>
   );
 }
