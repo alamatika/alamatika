@@ -1,8 +1,10 @@
 import Navbar from "../../../components/navbar";
 import Link from "next/link";
+import CreatorGuard from "../../../components/CreatorGuard";
 
 export default function AssetLibrary() {
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -101,5 +103,6 @@ export default function AssetLibrary() {
 
       </section>
     </main>
+    </CreatorGuard>
   );
 }

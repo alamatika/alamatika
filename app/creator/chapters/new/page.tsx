@@ -7,6 +7,7 @@ import Link from "next/link";
 import { supabase } from "../../../../lib/supabaseClient";
 import Navbar from "../../../../components/navbar";
 import imageCompression from "browser-image-compression";
+import CreatorGuard from "../../../../components/CreatorGuard";
 
 export default function NewChapter() {
   const router = useRouter();
@@ -294,6 +295,7 @@ export default function NewChapter() {
     hasPages;
 
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -620,5 +622,6 @@ export default function NewChapter() {
         </footer>
       </section>
     </main>
+    </CreatorGuard>
   );
 }

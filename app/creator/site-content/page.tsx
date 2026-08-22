@@ -32,7 +32,7 @@ export default function SiteContentCreator() {
 }, []);
 
   async function savePage(page: SiteContent) {
-    const response = await fetch("/api/creator/update-site-content", {
+    const response = await fetch("/api/update-site-content", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

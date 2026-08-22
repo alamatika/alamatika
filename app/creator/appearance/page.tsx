@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import Navbar from "../../../components/navbar";
+import CreatorGuard from "../../../components/CreatorGuard";
 
 export default function AppearancePage() {
   const [appearance, setAppearance] = useState<Record<string, string>>({});
@@ -509,6 +510,7 @@ useEffect(() => {
   ];
 
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -849,5 +851,6 @@ disabled={uploadingKey === item.key}
 
       </section>
     </main>
+    </CreatorGuard>
   );
 }

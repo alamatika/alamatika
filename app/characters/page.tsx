@@ -65,8 +65,8 @@ export default function Characters() {
     >
       <Navbar />
 
-      <section className="mt-32 w-full max-w-6xl mx-auto">
-        <h2 className="text-3xl md:text-4xl font-bold text-center text-yellow-400 mb-10 md:mb-16">
+      <section className="w-full max-w-6xl mx-auto">
+        <h2 className="text-3xl md:text-4xl font-bold text-center text-yellow-400 mb-10">
           Characters
         </h2>
       <div className="flex justify-center">

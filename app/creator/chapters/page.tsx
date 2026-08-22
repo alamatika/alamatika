@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import Navbar from "../../../components/navbar";
+import CreatorGuard from "../../../components/CreatorGuard";
 
 export default async function Chapters() {
   const { data: chapters, error } = await supabase
@@ -19,6 +20,7 @@ if (error) {
   );
 }
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -145,5 +147,6 @@ if (error) {
       
       </section>
     </main>
+    </CreatorGuard>
   );
 }

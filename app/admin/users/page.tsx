@@ -87,6 +87,7 @@ export default function AdminUsers() {
   });
 
   return (
+    <AdminGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -296,5 +297,6 @@ export default function AdminUsers() {
 
       </section>
     </main>
+    </AdminGuard>
   );
 }

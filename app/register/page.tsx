@@ -9,8 +9,17 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   async function handleRegister() {
+
+      if (!acceptedTerms) {
+  alert(
+    "Please agree to the Terms of Service and Privacy Policy before creating an account."
+  );
+  return;
+}
+
 
   // Check if username already exists
   const { data: existingUser, error: checkError } = await supabase
@@ -30,15 +39,21 @@ export default function RegisterPage() {
   }
 
   // Create account
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        username,
-      },
+ const { error } = await supabase.auth.signUp({
+  email,
+  password,
+  options: {
+    data: {
+      username,
+      terms_accepted: true,
+      terms_accepted_at: new Date().toISOString(),
+      terms_version: "1.0",
+      privacy_accepted: true,
+      privacy_accepted_at: new Date().toISOString(),
+      privacy_version: "1.0",
     },
-  });
+  },
+});
 
   if (error) {
 
@@ -53,6 +68,7 @@ export default function RegisterPage() {
     alert(error.message);
     return;
   }
+
 
   alert(
     "🎉 Account created!\n\nPlease check your email and click the verification link before logging in."
@@ -99,12 +115,51 @@ export default function RegisterPage() {
             className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-5 py-4 focus:outline-none focus:border-yellow-400"
           />
 
+          <div className="flex items-start gap-3">
+  <input
+    id="acceptedTerms"
+    type="checkbox"
+    checked={acceptedTerms}
+    onChange={(e) => setAcceptedTerms(e.target.checked)}
+    className="mt-1 w-5 h-5 accent-yellow-500 cursor-pointer"
+  />
+
+  <label
+    htmlFor="acceptedTerms"
+    className="text-sm text-gray-400 leading-6 cursor-pointer"
+  >
+    I agree to the{" "}
+    <Link
+      href="/terms"
+      target="_blank"
+      className="text-yellow-400 hover:text-yellow-300 underline"
+    >
+      Terms of Service
+    </Link>{" "}
+    and{" "}
+    <Link
+      href="/privacy"
+      target="_blank"
+      className="text-yellow-400 hover:text-yellow-300 underline"
+    >
+      Privacy Policy
+    </Link>
+    .
+  </label>
+</div>
+
           <button
-          onClick={handleRegister}
-          className="w-full bg-yellow-500 text-black font-bold py-4 rounded-xl hover:bg-yellow-400 transition"
-         >
-           Create Account
-          </button>
+  onClick={handleRegister}
+  disabled={!acceptedTerms}
+  className={`w-full font-bold py-4 rounded-xl transition ${
+    acceptedTerms
+      ? "bg-yellow-500 text-black hover:bg-yellow-400"
+      : "bg-zinc-700 text-gray-500 cursor-not-allowed"
+  }`}
+>
+  Create Account
+</button>
+
           <div className="text-center mt-6">
   <Link
     href="/login"

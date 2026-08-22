@@ -1,8 +1,10 @@
 import Navbar from "../../../components/navbar";
 import Link from "next/link";
+import CreatorGuard from "../../../components/CreatorGuard";
 
 export default function Settings() {
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -94,5 +96,6 @@ export default function Settings() {
       
       </section>
     </main>
+    </CreatorGuard>
   );
 }

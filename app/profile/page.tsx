@@ -17,42 +17,143 @@ type Profile = {
   email_private: boolean;
   is_admin: boolean;
 };
+
+type Purchase = {
+  id: number;
+  created_at: string;
+  payment_code: string | null;
+  credits: number;
+  peso_amount: number;
+  payment_provider: string | null;
+  status: string;
+  expires_at: string | null;
+  approved_at: string | null;
+};
   
   const [profile, setProfile] = useState<Profile | null>(null);
 const [email, setEmail] = useState("");
+
+const [purchases, setPurchases] = useState<Purchase[]>([]);
+const [purchasesLoading, setPurchasesLoading] = useState(true);
+const [showAllApproved, setShowAllApproved] = useState(false);
+const [purchaseHistoryOpen, setPurchaseHistoryOpen] = useState(false);
+
+
   const router = useRouter();
 
   useEffect(() => {
-    async function loadUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let cancelled = false;
 
-  if (!user) {
-    router.push("/login");
-    return;
+  async function loadProfileData() {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      setEmail(user.email ?? "");
+
+      // ==========================================
+      // LOAD PROFILE
+      // ==========================================
+
+      const { data: profileData, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+      if (profileError) {
+        console.error(
+          "Could not load profile:",
+          profileError
+        );
+      }
+
+      if (!cancelled) {
+        setProfile(profileData);
+      }
+
+      // ==========================================
+      // LOAD MANUAL PURCHASES
+      // ==========================================
+
+      const response = await fetch(
+        "/api/profile/purchases",
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        }
+      );
+
+      const result = await response.json();
+
+      console.log(
+        "PROFILE PURCHASES API:",
+        result
+      );
+
+      if (!response.ok) {
+        console.error(
+          result?.error ||
+            "Could not load purchases."
+        );
+
+        return;
+      }
+
+      if (!cancelled) {
+        const purchaseList = Array.isArray(
+          result?.purchases
+        )
+          ? result.purchases
+          : [];
+
+        console.log(
+          "SETTING PURCHASES:",
+          purchaseList
+        );
+
+        setPurchases(purchaseList);
+      }
+
+    } catch (error) {
+      console.error(
+        "Profile loading error:",
+        error
+      );
+
+    } finally {
+      if (!cancelled) {
+        setPurchasesLoading(false);
+      }
+    }
   }
 
-  setEmail(user.email ?? "");
+  loadProfileData();
 
-  const { data } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-    console.log("PROFILE:", data);
-console.log("IS ADMIN:", data?.is_admin);
-  setProfile(data);
-}
-
-    loadUser();
-  }, [router]);
+  return () => {
+    cancelled = true;
+  };
+}, [router]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/");
   }
+
+console.log(
+  "PROFILE RENDER PURCHASES:",
+  purchases,
+  "LOADING:",
+  purchasesLoading
+); 
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -105,6 +206,42 @@ console.log("IS ADMIN:", data?.is_admin);
 
 </div>
 
+<div className="border-t border-zinc-700 pt-6 mt-6">
+
+  <h3 className="text-yellow-400 font-bold mb-2">
+    🆔 User ID
+  </h3>
+
+  <div className="flex items-center gap-2">
+    <p className="text-gray-400 text-sm break-all flex-1">
+      {profile?.id || "Loading User ID..."}
+    </p>
+
+    {profile?.id && (
+      <button
+        type="button"
+        onClick={async () => {
+          try {
+            await navigator.clipboard.writeText(profile.id);
+            alert("User ID copied!");
+          } catch (error) {
+            console.error(error);
+            alert("Could not copy User ID.");
+          }
+        }}
+        className="shrink-0 px-3 py-2 rounded-lg border border-zinc-700 text-gray-400 hover:border-yellow-500 hover:text-yellow-400 transition text-xs"
+      >
+        Copy
+      </button>
+    )}
+  </div>
+
+  <p className="text-gray-600 text-xs mt-2">
+    Your unique account ID.
+  </p>
+
+</div>
+
 <Link
   href="/wallet"
   className="block mt-6 rounded-2xl border border-yellow-500/30 bg-zinc-800 p-6 hover:border-yellow-400 hover:bg-zinc-700 transition"
@@ -135,6 +272,331 @@ Manage Wallet →
 </div>
 
 </Link> 
+
+{/* ==========================================
+    PURCHASE HISTORY
+========================================== */}
+
+<div className="mt-8 border-t border-zinc-700 pt-6">
+
+  <button
+    type="button"
+    onClick={() =>
+      setPurchaseHistoryOpen(
+        !purchaseHistoryOpen
+      )
+    }
+    className="w-full flex items-center justify-between gap-3 text-left"
+  >
+
+    <div>
+      <h3 className="text-yellow-400 font-bold">
+        💳 Purchase History
+      </h3>
+
+      {!purchasesLoading &&
+        purchases.length > 0 && (
+          <span className="text-xs text-gray-500">
+            {purchases.length}{" "}
+            {purchases.length === 1
+              ? "purchase"
+              : "purchases"}
+          </span>
+        )}
+    </div>
+
+    <span className="text-yellow-400 text-xl">
+      {purchaseHistoryOpen
+        ? "▲"
+        : "▼"}
+    </span>
+
+  </button>
+
+  {purchaseHistoryOpen && (
+  <div className="mt-5">
+
+  {purchasesLoading ? (
+
+    <p className="text-gray-500 text-sm">
+      Loading purchases...
+    </p>
+
+  ) : purchases.length === 0 ? (
+
+    <div className="rounded-xl bg-zinc-800 p-5 text-center">
+      <p className="text-gray-500 text-sm">
+        No manual purchases yet.
+      </p>
+    </div>
+
+  ) : (
+
+    <div className="space-y-6">
+
+      {/* ==========================================
+          PENDING PURCHASES
+      ========================================== */}
+
+      {purchases.filter(
+        (purchase) =>
+          purchase.status === "pending"
+      ).length > 0 && (
+
+        <div>
+
+          <h4 className="text-orange-400 font-bold mb-3">
+            ⏳ Pending Purchases
+            <span className="text-gray-500 text-xs ml-2">
+              (
+              {
+                purchases.filter(
+                  (purchase) =>
+                    purchase.status ===
+                    "pending"
+                ).length
+              }
+              )
+            </span>
+          </h4>
+
+          <div className="space-y-3">
+
+            {purchases
+              .filter(
+                (purchase) =>
+                  purchase.status === "pending"
+              )
+              .map((purchase) => (
+
+                <div
+                  key={purchase.id}
+                  className="rounded-xl border border-orange-500/30 bg-zinc-800 p-4"
+                >
+
+                  <div className="flex justify-between items-start gap-3">
+
+                    <div className="min-w-0">
+
+                      <p className="font-bold text-white">
+                        {purchase.payment_provider ||
+                          "Manual Payment"}
+                      </p>
+
+                      <p className="text-yellow-400 font-bold mt-1">
+                        ₱
+                        {Number(
+                          purchase.peso_amount
+                        ).toLocaleString()}{" "}
+                        → 💎{" "}
+                        {purchase.credits} Credits
+                      </p>
+
+                    </div>
+
+                    <span className="shrink-0 px-2 py-1 rounded-lg bg-orange-500/10 text-orange-400 text-xs font-bold">
+                      PENDING
+                    </span>
+
+                  </div>
+
+                  <div className="mt-3">
+
+                    <p className="text-gray-500 text-xs">
+                      Payment Code
+                    </p>
+
+                    <p className="text-white font-mono text-sm break-all mt-1">
+                      {purchase.payment_code ||
+                        "—"}
+                    </p>
+
+                  </div>
+
+                  <p className="text-gray-500 text-xs mt-3">
+                    Submitted:{" "}
+                    {new Date(
+                      purchase.created_at
+                    ).toLocaleString()}
+                  </p>
+
+                  <p className="text-orange-400 text-xs mt-2">
+                    Waiting for Creator approval.
+                  </p>
+
+                </div>
+
+              ))}
+
+          </div>
+
+        </div>
+      )}
+
+
+      {/* ==========================================
+          APPROVED PURCHASES
+      ========================================== */}
+
+      {purchases.filter(
+        (purchase) =>
+          purchase.status === "approved"
+      ).length > 0 && (
+
+        <div>
+
+          <div className="flex items-center justify-between gap-3 mb-3">
+
+            <h4 className="text-green-400 font-bold">
+              ✓ Approved Purchases
+              <span className="text-gray-500 text-xs ml-2">
+                (
+                {
+                  purchases.filter(
+                    (purchase) =>
+                      purchase.status ===
+                      "approved"
+                  ).length
+                }
+                )
+              </span>
+            </h4>
+
+          </div>
+
+
+          {/* Approved purchase list */}
+
+          <div className="space-y-3">
+
+            {purchases
+              .filter(
+                (purchase) =>
+                  purchase.status ===
+                  "approved"
+              )
+              .slice(
+                0,
+                showAllApproved
+                  ? undefined
+                  : 5
+              )
+              .map((purchase) => (
+
+                <div
+                  key={purchase.id}
+                  className="rounded-xl border border-green-500/30 bg-zinc-800 p-4"
+                >
+
+                  <div className="flex justify-between items-start gap-3">
+
+                    <div className="min-w-0">
+
+                      <p className="font-bold text-white">
+                        {purchase.payment_provider ||
+                          "Manual Payment"}
+                      </p>
+
+                      <p className="text-yellow-400 font-bold mt-1">
+                        ₱
+                        {Number(
+                          purchase.peso_amount
+                        ).toLocaleString()}{" "}
+                        → 💎{" "}
+                        {purchase.credits} Credits
+                      </p>
+
+                    </div>
+
+                    <span className="shrink-0 px-2 py-1 rounded-lg bg-green-500/10 text-green-400 text-xs font-bold">
+                      APPROVED
+                    </span>
+
+                  </div>
+
+
+                  <div className="mt-3">
+
+                    <p className="text-gray-500 text-xs">
+                      Payment Code
+                    </p>
+
+                    <p className="text-white font-mono text-sm break-all mt-1">
+                      {purchase.payment_code ||
+                        "—"}
+                    </p>
+
+                  </div>
+
+
+                  <p className="text-gray-500 text-xs mt-3">
+                    Submitted:{" "}
+                    {new Date(
+                      purchase.created_at
+                    ).toLocaleString()}
+                  </p>
+
+
+                  {purchase.approved_at && (
+                    <p className="text-green-400 text-xs mt-2">
+                      Approved:{" "}
+                      {new Date(
+                        purchase.approved_at
+                      ).toLocaleString()}
+                    </p>
+                  )}
+
+                </div>
+
+              ))}
+
+          </div>
+
+
+          {/* Expand / Collapse */}
+
+          {
+            purchases.filter(
+              (purchase) =>
+                purchase.status ===
+                "approved"
+            ).length > 5 && (
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowAllApproved(
+                    !showAllApproved
+                  )
+                }
+                className="w-full mt-4 rounded-xl border border-zinc-700 bg-zinc-800 px-4 py-3 text-sm font-bold text-gray-300 hover:border-yellow-500 hover:text-yellow-400 transition"
+              >
+                {showAllApproved
+                  ? "▲ Show less"
+                  : `▼ Show all ${
+                      purchases.filter(
+                        (purchase) =>
+                          purchase.status ===
+                          "approved"
+                      ).length
+                    } approved purchases`}
+              </button>
+
+            )
+          }
+
+        </div>
+
+      )}
+
+    </div>
+
+    )}
+
+  </div>
+)}
+
+</div>
 
 <div className="mt-8 flex flex-col gap-4">
 

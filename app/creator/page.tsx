@@ -128,11 +128,12 @@ const [
     }),
 
   supabase
-    .from("reports")
-    .select("*", {
-      count: "exact",
-      head: true,
-    }),
+  .from("reports")
+  .select("*", {
+    count: "exact",
+    head: true,
+  })
+  .eq("status", "pending"),
 
   supabase
     .from("bookmarks")
@@ -238,16 +239,27 @@ setUnreadMessages(
 }, []);
 
 useEffect(() => {
-
   const channel = supabase
-    .channel("creator-purchases")
+    .channel("creator-payments")
 
     .on(
       "postgres_changes",
       {
         event: "*",
         schema: "public",
-        table: "purchases",
+        table: "credit_purchases",
+      },
+      () => {
+        window.location.reload();
+      }
+    )
+
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "manual_payments",
       },
       () => {
         window.location.reload();
@@ -259,7 +271,6 @@ useEffect(() => {
   return () => {
     supabase.removeChannel(channel);
   };
-
 }, []);
 
 useEffect(() => {
@@ -295,6 +306,40 @@ useEffect(() => {
     supabase.removeChannel(channel);
   };
 
+}, []);
+
+useEffect(() => {
+  const channel = supabase
+    .channel("creator-reports")
+
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "reports",
+      },
+      async () => {
+        const { count } = await supabase
+          .from("reports")
+          .select("*", {
+            count: "exact",
+            head: true,
+          })
+          .eq("status", "pending");
+
+        setStats((previous) => ({
+          ...previous,
+          reports: count ?? 0,
+        }));
+      }
+    )
+
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }, []);
 
   return (
@@ -513,6 +558,20 @@ useEffect(() => {
   className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
 >
   💰 Income Report
+</Link>
+
+<Link
+  href="/creator/payments"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  💳 Manual Payments
+</Link>
+
+<Link
+  href="/creator/payments/settings"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  ⚙️ Payment Settings
 </Link>
 
     <Link

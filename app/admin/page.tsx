@@ -312,7 +312,7 @@ export default function Admin() {
 
             <p className="text-gray-400 text-sm leading-relaxed">
               Administrators manage the community, but the Creator retains
-              full control over administrator privileges and ALAMATIKA's
+              full control over administrator privileges and ALAMATIKA
               core content.
             </p>
 

@@ -373,11 +373,11 @@ function handleLogoClick() {
   </div>
 
   <Link
-  href={`/profile/${user?.id}`}
+  href="/profile"
   onClick={() => setProfileMenuOpen(false)}
   className="block px-5 py-4 hover:bg-zinc-800"
 >
-  👤 View Profile
+  👤 My Profile
 </Link>
 
 {isAdmin && (
@@ -483,11 +483,11 @@ function handleLogoClick() {
     {user ? (
       <>
         <Link
-  href={`/profile/${user?.id}`}
+  href="/profile"
   onClick={() => setMobileMenuOpen(false)}
 >
-          👤 {username}
-        </Link>
+  👤 {username}
+</Link>
 
         {isAdmin && (
   <Link

@@ -1,5 +1,6 @@
 "use client";
 
+import CreatorGuard from "../../../../components/CreatorGuard";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "../../../../lib/supabaseClient";
@@ -735,6 +736,7 @@ export default function EditChapter() {
     pageImages.length > 0;
 
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -1257,5 +1259,6 @@ export default function EditChapter() {
       )}
 
     </main>
+    </CreatorGuard>
   );
 }
