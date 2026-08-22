@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     const { credits, redirect } = await request.json();
 
 
-    const normalPackages = [1, 100, 300, 600, 1200];
+    const normalPackages = [100, 300, 600, 1200];
 
 const validPackage = normalPackages.includes(credits);
 

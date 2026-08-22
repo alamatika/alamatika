@@ -388,40 +388,6 @@ async function unlockWithCredits() {
             ) : null}
 
 
-            {/* ₱1 — TEMPORARY LIVE TEST */}
-
-<div className="bg-zinc-800 border border-red-500 rounded-xl p-4 text-left transition">
-
-  <div className="flex justify-between items-center gap-3">
-
-    <div>
-
-      <h3 className="text-2xl font-bold text-red-400">
-        ₱1
-      </h3>
-
-      <p className="text-gray-400 text-sm mt-1">
-        💎 Receive 1 Credit
-      </p>
-
-      <p className="text-red-400 text-xs mt-2">
-        ⚠ Temporary PayMongo Live Test
-      </p>
-
-    </div>
-
-    <button
-      type="button"
-      onClick={() => buyCredits(1)}
-      className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-red-500 transition"
-    >
-      Test PayMongo
-    </button>
-
-  </div>
-
-</div>
-
             {/* ₱100 */}
             
               <div className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-xl p-4 text-left transition">
