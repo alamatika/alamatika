@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "../../../../lib/supabaseServer";
 import { createClient } from "@supabase/supabase-js";
-
 export async function POST(request: Request) {
   try {
     const supabase = await createSupabaseServerClient();
@@ -19,12 +18,18 @@ export async function POST(request: Request) {
 
     const { credits, redirect } = await request.json();
 
-    if (![100, 300, 600, 1200].includes(credits)) {
-      return NextResponse.json(
-        { error: "Invalid credit package." },
-        { status: 400 }
-      );
-    }
+
+    const normalPackages = [1, 100, 300, 600, 1200];
+
+const validPackage = normalPackages.includes(credits);
+
+if (!validPackage) {
+  return NextResponse.json(
+    { error: "Invalid credit package." },
+    { status: 400 }
+  );
+}
+
 
     const {
       data: { user },

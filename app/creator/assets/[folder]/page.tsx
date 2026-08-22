@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Navbar from "../../../../components/navbar";
+import CreatorGuard from "../../../../components/CreatorGuard";
 
 interface Props {
   params: {
@@ -9,6 +10,7 @@ interface Props {
 
 export default function AssetFolder({ params }: Props) {
   return (
+    <CreatorGuard>
     <main className="min-h-screen bg-black text-white">
       <Navbar />
 
@@ -43,5 +45,6 @@ export default function AssetFolder({ params }: Props) {
 
       </section>
     </main>
+    </CreatorGuard>
   );
 }
