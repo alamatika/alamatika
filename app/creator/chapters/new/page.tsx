@@ -1,7 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import {
+  Suspense,
+  useState,
+  useEffect,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "../../../../lib/supabaseClient";
@@ -9,7 +13,7 @@ import Navbar from "../../../../components/navbar";
 import imageCompression from "browser-image-compression";
 import CreatorGuard from "../../../../components/CreatorGuard";
 
-export default function NewChapter() {
+function NewChapterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -961,5 +965,19 @@ const { error } = await supabase
 
       </main>
     </CreatorGuard>
+    );
+}
+
+export default function NewChapter() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-black text-white flex items-center justify-center">
+          Loading chapter editor...
+        </main>
+      }
+    >
+      <NewChapterContent />
+    </Suspense>
   );
 }
