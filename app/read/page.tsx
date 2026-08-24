@@ -1,138 +1,124 @@
-
 import { createSupabaseServerClient } from "../../lib/supabaseServer";
-import ChapterCard from "../../components/ChapterCard";
 import Navbar from "../../components/navbar";
-
-type ChapterCardProps = {
-  chapter: string;
-  image: string;
-  link: string;
-  badge?: string;
-  locked?: boolean;
-  purchased?: boolean;
-
-  chapterId: number;
-  bookmarked: boolean;
-};
-
-
+import Link from "next/link";
 
 export default async function Read() {
-
   const supabase = await createSupabaseServerClient();
+
   const { data: appearanceRows } = await supabase
-  .from("appearance")
-  .select("*");
+    .from("appearance")
+    .select("*");
 
   const appearance: Record<string, string> = {};
 
-appearanceRows?.forEach((item) => {
-  appearance[item.key] = item.value;
-});
+  appearanceRows?.forEach((item) => {
+    appearance[item.key] = item.value;
+  });
 
-console.log(appearance);
-console.log("READ BG:", appearance.read_background);
+  const { data: stories, error } = await supabase
+  .from("stories")
+  .select(`
+    id,
+    title,
+    description,
+    cover_image,
+    published,
+    created_at
+  `)
+    .eq("published", true)
+    .order("created_at", {
+      ascending: true,
+    });
 
+  if (error) {
+    console.error("Error loading stories:", error);
 
-const {
-  data: { user },
-} = await supabase.auth.getUser();
+    return (
+      <main className="min-h-screen bg-black text-white">
+        <Navbar />
 
-const { data: chapters, error } = await supabase
-  .from("chapters")
-  .select("*")
-  .eq("published", true)
-  .order("chapter");
+        <div className="pt-32 text-center">
+          <p className="text-red-400">
+            Error loading stories.
+          </p>
+        </div>
+      </main>
+    );
+  }
 
-  console.log(chapters);
-console.log(error);
-
-if (error) {
-  return <div>Error loading chapters.</div>;
-}
- 
-let unlockedChapterIds: number[] = [];
-
-if (user) {
-  const { data: unlocks } = await supabase
-    .from("chapter_unlocks")
-    .select("chapter_id")
-    .eq("user_id", user.id);
-
-  unlockedChapterIds =
-    unlocks?.map((u) => u.chapter_id) ?? [];
-
-  console.log("UNLOCK IDS:", unlockedChapterIds);
-}
-let bookmarkedChapterIds: number[] = [];
-
-if (user) {
-  const { data: bookmarks } = await supabase
-    .from("bookmarks")
-    .select("chapter_id")
-    .eq("user_id", user.id);
-
-  bookmarkedChapterIds =
-    bookmarks?.map((b) => b.chapter_id) ?? [];
-}
-
-return (
+  return (
     <main
       className="min-h-screen bg-cover bg-center bg-no-repeat text-white pt-24 md:pt-32 px-4 md:px-6"
       style={{
-  backgroundImage: `url(${
-    appearance.read_background ??
-    "/backgrounds/read.jpg"
-  })`,
-}}
+        backgroundImage: `url(${
+          appearance.read_background ??
+          "/backgrounds/read.jpg"
+        })`,
+      }}
     >
       <Navbar />
 
       <section className="w-full max-w-6xl mx-auto">
 
-        <h1 className="text-3xl md:text-4xl font-bold text-center text-yellow-400 mb-10">
-           ALAMATIKA
+        <h1 className="text-3xl md:text-4xl font-bold text-center text-yellow-400 mb-4">
+          Stories
         </h1>
 
+        <p className="text-gray-400 text-center mb-10">
+          Choose a story to begin reading.
+        </p>
 
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 justify-items-center">
+        {stories?.length === 0 ? (
 
-  {chapters?.map((chapter) => {
-  console.log(
-    "CHAPTER:",
-    chapter.chapter,
-    "DB ID:",
-    chapter.id,
-    "Unlocked:",
-    unlockedChapterIds.includes(chapter.id)
-  );
+          <div className="text-center text-gray-500 py-20">
+            No stories are available yet.
+          </div>
 
-  return (
-    <ChapterCard
-  key={chapter.id}
-  chapter={chapter.title}
-  image={chapter.cover_image}
-  link={`/read/chapter-${chapter.chapter}`}
-  badge={
-    unlockedChapterIds.includes(chapter.id)
-      ? "✓ Unlocked"
-      : chapter.locked
-      ? "LOCKED"
-      : "FREE"
-  }
-  locked={
-  chapter.locked &&
-  !unlockedChapterIds.includes(chapter.id)
-}
-purchased={unlockedChapterIds.includes(chapter.id)}
-  chapterId={chapter.id}
-  bookmarked={bookmarkedChapterIds.includes(chapter.id)}
-/>
-  );
-})}
+        ) : (
 
-</div>
-      
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
+
+            {stories?.map((story) => {
+
+              return (
+                <Link
+                  key={story.id}
+                  href={`/read/story/${story.id}`}
+                  className="bg-zinc-900/90 rounded-2xl overflow-hidden border border-zinc-800 hover:border-yellow-500 transition"
+                >
+
+                  {story.cover_image ? (
+                    <img
+                      src={story.cover_image}
+                      alt={story.title}
+                      className="w-full aspect-[3/4] object-cover"
+                    />
+                  ) : (
+                    <div className="w-full aspect-[3/4] bg-zinc-800 flex items-center justify-center text-gray-500">
+                      No Cover
+                    </div>
+                  )}
+
+                  <div className="p-3 sm:p-4 md:p-5">
+
+                    <h2 className="text-base sm:text-xl md:text-2xl font-bold text-yellow-400 leading-tight">
+                      {story.title}
+                     </h2>
+
+                    <p className="text-gray-400 mt-3 line-clamp-3">
+                      {story.description ||
+                        "No description yet."}
+                    </p>
+
+                  </div>
+
+                </Link>
+              );
+            })}
+
+          </div>
+
+        )}
 
       </section>
 

@@ -5,7 +5,7 @@ import Navbar from "../../components/navbar";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import AdminChatPopup from "../../components/AdminChatPopup";
+import CreatorChatPopup from "../../components/CreatorChatPopup";
 
 type Chapter = {
   id: number;
@@ -525,13 +525,26 @@ useEffect(() => {
 
   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
 
-    <Link href="/creator/chapters" className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition">
-       Chapters
-    </Link>
+    <Link
+  href="/creator/stories"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  📚 Stories
+</Link>
 
-    <Link href="/creator/chapters/new" className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition">
-      ➕ New Chapter
-    </Link>
+<Link
+  href="/creator/chapters"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  📖 Chapters
+</Link>
+
+<Link
+  href="/creator/stories"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  ➕ Publish Chapter
+</Link>
 
     <Link href="/creator/characters" className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition">
       👥 Characters
@@ -582,11 +595,19 @@ useEffect(() => {
     </Link>
 
     <Link
+  href="/creator/readers"
+  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+>
+  👥 Reader Accounts
+</Link>
+
+    <Link
   href="/creator/users"
   className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
 >
   👥 Users
 </Link>
+
 
 <Link href="/creator/site-content">
   <button className="w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold rounded-2xl p-6 transition">
@@ -757,7 +778,7 @@ useEffect(() => {
         Version 1.0.0
       </footer>
 
-      <AdminChatPopup />
+      <CreatorChatPopup />
 
     </main>
 

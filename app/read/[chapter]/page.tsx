@@ -126,9 +126,12 @@ if (chapterData.locked && !alreadyUnlocked) {
 
         {credits >= 25 ? (
   <ChapterUnlockButton
-    chapterId={String(chapterData.id)}
-    chapterNumber={chapterNumber}
-  />
+  chapterId={String(chapterData.id)}
+  chapterNumber={chapterNumber}
+  storyId={String(chapterData.story_id)}
+  seasonId={String(chapterData.season_id)}
+/>
+
 ) : (
   <a
     href={`/wallet?redirect=/read/chapter-${chapterNumber}`}

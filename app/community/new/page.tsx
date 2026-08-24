@@ -169,65 +169,71 @@ if (!user) {
             className="w-full bg-zinc-900 border border-zinc-700 rounded-xl p-3"
           />
 
-        <div className="space-y-4">
+    
+<div className="space-y-4">
 
-      
+  <div className="flex flex-col sm:flex-row gap-3">
 
-  <label
-  htmlFor="image-upload"
-  className="inline-flex w-full md:w-auto justify-center items-center gap-2 cursor-pointer
-bg-yellow-500 hover:bg-yellow-400
-text-black font-bold
-px-6 py-3 rounded-xl transition"
->
-  📷 Upload Artwork
-</label>
-<p className="text-gray-500 text-sm">
-  JPG, PNG or WEBP • Maximum 10 MB
-</p>
+    <label
+      htmlFor="image-upload"
+      className="inline-flex flex-1 justify-center items-center gap-2 cursor-pointer
+      bg-yellow-500 hover:bg-yellow-400
+      text-black font-bold
+      px-6 py-3 rounded-xl transition"
+    >
+      📷 Upload Artwork
+    </label>
 
-<input
-  id="image-upload"
-  type="file"
-  accept="image/*"
-  className="hidden"
-  onChange={(e) => {
-    if (e.target.files?.[0]) {
-      uploadImage(e.target.files[0]);
-    }
-  }}
-/>
+    <button
+      type="button"
+      onClick={publishPost}
+      disabled={uploading || publishing}
+      className={`inline-flex flex-1 justify-center items-center px-6 py-3 rounded-xl font-bold transition ${
+        uploading || publishing
+          ? "bg-zinc-700 text-gray-400 cursor-not-allowed"
+          : "bg-yellow-500 hover:bg-yellow-400 text-black"
+      }`}
+    >
+      {publishing
+        ? "⏳ Publishing..."
+        : "🚀 Publish Post"}
+    </button>
+
+  </div>
+
+  <p className="text-gray-500 text-sm">
+    JPG, PNG or WEBP • Maximum 10 MB
+  </p>
+
+  <input
+    id="image-upload"
+    type="file"
+    accept="image/*"
+    className="hidden"
+    onChange={(e) => {
+      if (e.target.files?.[0]) {
+        uploadImage(e.target.files[0]);
+      }
+
+      e.target.value = "";
+    }}
+  />
 
   {uploading && (
     <p className="text-yellow-400">
-      🖼 uploading artwork...
+      🖼 Uploading artwork...
     </p>
   )}
 
   {image && (
-
     <img
       src={image}
       className="w-full rounded-2xl border border-yellow-500 max-h-[450px] object-contain"
       alt="Preview"
     />
-
   )}
 
 </div>
-          
-          <button
-  onClick={publishPost}
-  disabled={uploading}
-            className={`w-full md-auto px-8 py-4 rounded-xl font-bold transition ${
-  uploading
-    ? "bg-zinc-700 text-gray-400 cursor-not-allowed"
-    : "bg-yellow-500 hover:bg-yellow-400 text-black"
-}`}
-          >
-            🚀 Publish Post
-          </button>
-
         </div>
 
       </section>

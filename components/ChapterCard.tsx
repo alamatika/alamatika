@@ -26,10 +26,10 @@ export default function ChapterCard({
 }: ChapterCardProps) {
 
   return (
-    <div className="relative w-full max-w-[170px] bg-black/50 backdrop-blur-md rounded-3xl overflow-hidden border border-yellow-500/20 hover:scale-[1.02] transition duration-300">
+    <div className="relative w-full max-w-[120px] sm:max-w-[150px] md:max-w-[170px] bg-black/50 backdrop-blur-md rounded-2xl overflow-hidden border border-yellow-500/20 hover:scale-[1.02] transition duration-300">
 
       {badge && (
-        <div className="absolute top-3 right-3 bg-yellow-400 text-black font-bold px-2 py-1 rounded-full text-xs">
+        <div className="absolute top-2 right-2 bg-yellow-400 text-black font-bold px-2 py-1 rounded-full text-[10px] sm:text-xs">
           {badge}
         </div>
       )}
@@ -41,12 +41,12 @@ export default function ChapterCard({
   className="w-full aspect-[4/5] object-cover"
 />
 ) : (
- <div className="w-full h-52 bg-zinc-800 flex items-center justify-center text-gray-500">
+ <div className="w-full aspect-[4/5] bg-zinc-800 flex items-center justify-center text-gray-500 text-xs">
     No Cover
   </div>
 )}
 
-      <div className="p-3 text-center">
+      <div className="p-2 sm:p-3 text-center">
 
         <h2 className="text-xs font-bold text-yellow-400">
           {chapter}
@@ -54,7 +54,7 @@ export default function ChapterCard({
 
         <Link
   href={link}
-  className={`block w-full mt-3 px-3 py-2 rounded-full text-sm text-center font-bold transition ${
+  className={`block w-full mt-2 px-2 py-1.5 rounded-full text-[10px] sm:text-xs text-center font-bold transition ${
     purchased
       ? "bg-green-600 text-white hover:bg-green-500"
       : locked

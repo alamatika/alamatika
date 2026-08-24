@@ -138,9 +138,20 @@ const [purchaseHistoryOpen, setPurchaseHistoryOpen] = useState(false);
 
   loadProfileData();
 
+  const {
+  data: { subscription },
+} = supabase.auth.onAuthStateChange(
+  (_event, session) => {
+    if (!session) {
+      router.replace("/");
+    }
+  }
+);
+
   return () => {
-    cancelled = true;
-  };
+  cancelled = true;
+  subscription.unsubscribe();
+};
 }, [router]);
 
   async function handleLogout() {

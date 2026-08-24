@@ -283,16 +283,16 @@ async function reportPost(post: CommunityPost) {
   <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8">
 
 
-    <div className="flex gap-3 flex-wrap">
+    <div className="flex gap-2 sm:gap-3 flex-wrap">
 
   <Link href="/community/new">
-    <button className="px-6 py-3 bg-yellow-500 text-black rounded-xl font-bold hover:bg-yellow-400 transition">
+    <button className="px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base bg-yellow-500 text-black rounded-lg sm:rounded-xl font-bold hover:bg-yellow-400 transition">
       ➕ Create Post
     </button>
   </Link>
 
   <Link href="/community/myposts">
-    <button className="px-6 py-3 bg-zinc-700 text-white rounded-xl font-bold hover:bg-zinc-600 transition">
+    <button className="px-4 py-2 sm:px-6 sm:py-3 text-sm sm:text-base bg-zinc-700 text-white rounded-lg sm:rounded-xl font-bold hover:bg-zinc-600 transition">
       📄 My Posts
     </button>
   </Link>
@@ -301,12 +301,12 @@ async function reportPost(post: CommunityPost) {
 
   </div>
 
-<div className="flex flex-wrap gap-3 mb-6">
+<div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
 
 
   <button
     onClick={() => setSortMode("Newest")}
-    className={`px-4 py-2 rounded-full text-sm md:text-base font-bold transition ${
+    className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-full text-sm md:text-base font-bold transition ${
       sortMode === "Newest"
         ? "bg-yellow-500 text-black"
         : "bg-zinc-800 hover:bg-zinc-700"
@@ -317,7 +317,7 @@ async function reportPost(post: CommunityPost) {
 
   <button
     onClick={() => setSortMode("Trending")}
-    className={`px-5 py-2 rounded-full font-bold transition ${
+    className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-full font-bold transition ${
       sortMode === "Trending"
         ? "bg-yellow-500 text-black"
         : "bg-zinc-800 hover:bg-zinc-700"
@@ -339,7 +339,7 @@ async function reportPost(post: CommunityPost) {
     <button
       key={category}
       onClick={() => setSelectedCategory(category)}
-      className={`px-5 py-2 rounded-full font-bold transition ${
+      className={`px-3 py-1.5 sm:px-5 sm:py-2 rounded-full font-bold transition ${
         selectedCategory === category
           ? "bg-yellow-500 text-black"
           : "bg-zinc-800 hover:bg-zinc-700"

@@ -26,6 +26,8 @@ const aboutMenuRef = useRef<HTMLDivElement>(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [username, setUsername] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [chatUnreadCount, setChatUnreadCount] =
+  useState(0);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -34,6 +36,28 @@ const aboutMenuRef = useRef<HTMLDivElement>(null);
   const clickCount = useRef(0);
   const clickTimer = useRef<NodeJS.Timeout | null>(null);
 
+async function loadChatUnread() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    setChatUnreadCount(0);
+    return;
+  }
+
+  const { count } = await supabase
+    .from("creator_messages")
+    .select("*", {
+      count: "exact",
+      head: true,
+    })
+    .eq("user_id", user.id)
+    .eq("sender", "creator")
+    .eq("is_read", false);
+
+  setChatUnreadCount(count ?? 0);
+}
 
 useEffect(() => {
   async function loadUnread() {
@@ -103,7 +127,6 @@ useEffect(() => {
 
      if (data.user) {
 
-  if (data.user) {
   const { data: profile } = await supabase
   .from("profiles")
   .select("avatar, username, is_admin")
@@ -113,7 +136,8 @@ useEffect(() => {
 setAvatar(profile?.avatar ?? "");
 setUsername(profile?.username ?? "");
 setIsAdmin(profile?.is_admin ?? false);
-}
+
+await loadChatUnread();
   
       const { count } = await supabase
   .from("notifications")
@@ -165,6 +189,36 @@ setNotificationCount(count ?? 0);
   supabase.removeChannel(notificationChannel);
 };
  }, []);
+
+ useEffect(() => {
+  const channel = supabase
+    .channel("navbar-creator-messages")
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "creator_messages",
+      },
+      (payload) => {
+        const message = payload.new as {
+          sender?: string;
+          user_id?: string;
+        };
+
+        if (message.sender === "creator") {
+          setChatUnreadCount((count) => count + 1);
+        }
+
+        loadChatUnread();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, []);
 
 useEffect(() => {
   function handleClickOutside(event: MouseEvent) {
@@ -251,7 +305,7 @@ function handleLogoClick() {
   </button>
 
   {aboutMenuOpen && (
-    <div className="absolute mt-3 w-56 rounded-2xl bg-zinc-900 border border-yellow-500/40 shadow-2xl overflow-hidden">
+    <div className="absolute mt-3 w-56 rounded-2xl bg-black/60 backdrop-blur-xl border border-yellow-500/40 shadow-2xl overflow-hidden">
 
       <Link
         href="/about"
@@ -312,9 +366,17 @@ function handleLogoClick() {
 
 <button
   onClick={() => setChatOpen(true)}
-  className="hover:opacity-80 transition text-2xl"
+  className="relative hover:opacity-80 transition text-2xl"
 >
   💬
+
+  {chatUnreadCount > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
+      {chatUnreadCount > 99
+        ? "99+"
+        : chatUnreadCount}
+    </span>
+  )}
 </button>
 
         {user ? (
@@ -344,7 +406,7 @@ function handleLogoClick() {
 
   {profileMenuOpen && (
 
-    <div className="absolute right-0 mt-3 z-50 w-64 rounded-2xl bg-zinc-900 border border-yellow-500/40 shadow-2xl backdrop-blur-md overflow-hidden">
+    <div className="absolute right-0 mt-3 z-50 w-64 rounded-2xl bg-black/60 backdrop-blur-xl border border-yellow-500/40 shadow-2xl overflow-hidden">
 
   <div className="flex items-center gap-4 px-5 py-5 border-b border-zinc-700">
 
@@ -450,7 +512,7 @@ function handleLogoClick() {
 </div>
 
 {mobileMenuOpen && (
-  <div className="fixed top-20 left-0 w-full bg-black/95 backdrop-blur-md z-40 flex flex-col items-center py-5 gap-3 md:hidden text-sm">
+  <div className="fixed top-20 left-0 w-full bg-black/60 backdrop-blur-xl border-b border-yellow-500/20 shadow-2xl z-40 flex flex-col items-center py-5 gap-3 md:hidden text-sm">
 
     <Link href="/" onClick={() => setMobileMenuOpen(false)}>
       Home
@@ -498,6 +560,24 @@ function handleLogoClick() {
     🛡️ View as Admin
   </Link>
 )}
+
+<button
+  onClick={() => {
+    setMobileMenuOpen(false);
+    setChatOpen(true);
+  }}
+  className="flex items-center gap-2"
+>
+  💬 Creator
+
+  {chatUnreadCount > 0 && (
+    <span className="bg-red-600 text-white rounded-full min-w-[18px] h-[18px] px-1 flex items-center justify-center text-[10px] font-bold">
+      {chatUnreadCount > 99
+        ? "99+"
+        : chatUnreadCount}
+    </span>
+  )}
+</button>
 
         <Link href="/notifications" onClick={() => setMobileMenuOpen(false)}>
           Notifications

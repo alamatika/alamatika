@@ -48,8 +48,10 @@ export default function EditProfilePage() {
 
   }, [router]);
 
-  async function uploadAvatar(file: File) {
-  const { data: userData } = await supabase.auth.getUser();
+async function uploadAvatar(file: File) {
+  const {
+    data: userData,
+  } = await supabase.auth.getUser();
 
   if (!userData.user) {
     alert("You must be logged in.");
@@ -58,7 +60,6 @@ export default function EditProfilePage() {
 
   const userId = userData.user.id;
 
-  // Remember the old avatar
   const oldAvatar = avatar;
 
   const img = new Image();
@@ -70,105 +71,209 @@ export default function EditProfilePage() {
     img.src = reader.result as string;
 
     img.onload = async () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+      const canvas =
+        document.createElement("canvas");
+
+      const ctx =
+        canvas.getContext("2d");
+
+      if (!ctx) {
+        alert(
+          "Could not process the image."
+        );
+        return;
+      }
 
       const size = 256;
 
       canvas.width = size;
       canvas.height = size;
 
-      ctx?.drawImage(img, 0, 0, size, size);
+      /*
+       * Crop the image to a square first
+       * so it never gets stretched.
+       */
+      const sourceSize =
+        Math.min(
+          img.naturalWidth,
+          img.naturalHeight
+        );
 
-      canvas.toBlob(async (blob) => {
-        if (!blob) return;
+      const sourceX =
+        (img.naturalWidth -
+          sourceSize) /
+        2;
 
-        const filename = `${userId}-${Date.now()}.jpg`;
+      const sourceY =
+        (img.naturalHeight -
+          sourceSize) /
+        2;
 
-        // Upload new avatar first
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filename, blob, {
-            contentType: "image/jpeg",
-            upsert: false,
-          });
+      ctx.drawImage(
+        img,
+        sourceX,
+        sourceY,
+        sourceSize,
+        sourceSize,
+        0,
+        0,
+        size,
+        size
+      );
 
-        if (uploadError) {
-          alert(uploadError.message);
-          return;
-        }
+      canvas.toBlob(
+        async (blob) => {
+          if (!blob) {
+            alert(
+              "Could not process the image."
+            );
+            return;
+          }
 
-        // Get new public URL
-        const { data } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filename);
+          const filename =
+            `${userId}-${Date.now()}.jpg`;
 
-        const newAvatarUrl = data.publicUrl;
-
-        // Update the profile with the new avatar
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({
-            avatar: newAvatarUrl,
-          })
-          .eq("id", userId);
-
-        if (updateError) {
-          // Database update failed, remove the newly uploaded file
-          await supabase.storage
+          // Upload new avatar first.
+          const {
+            error: uploadError,
+          } = await supabase.storage
             .from("avatars")
-            .remove([filename]);
+            .upload(
+              filename,
+              blob,
+              {
+                contentType:
+                  "image/jpeg",
+                upsert: false,
+              }
+            );
 
-          alert(updateError.message);
-          return;
-        }
+          if (uploadError) {
+            alert(
+              uploadError.message
+            );
+            return;
+          }
 
-        // Show the new avatar immediately
-        setAvatar(newAvatarUrl);
-
-        // Delete the OLD avatar from Storage
-        if (oldAvatar && oldAvatar.startsWith("http")) {
-          try {
-            const url = new URL(oldAvatar);
-
-            const marker = "/storage/v1/object/public/avatars/";
-
-            const index = url.pathname.indexOf(marker);
-
-            if (index !== -1) {
-              const oldPath = decodeURIComponent(
-                url.pathname.substring(
-                  index + marker.length
-                )
+          const { data } =
+            supabase.storage
+              .from("avatars")
+              .getPublicUrl(
+                filename
               );
 
-              if (oldPath && oldPath !== filename) {
-                const { error: deleteError } =
-                  await supabase.storage
-                    .from("avatars")
-                    .remove([oldPath]);
+          const newAvatarUrl =
+            data.publicUrl;
 
-                if (deleteError) {
-                  console.error(
-                    "Old avatar cleanup error:",
-                    deleteError
+          // Update profile first.
+          const {
+            error: updateError,
+          } = await supabase
+            .from("profiles")
+            .update({
+              avatar:
+                newAvatarUrl,
+            })
+            .eq(
+              "id",
+              userId
+            );
+
+          if (updateError) {
+            await supabase.storage
+              .from("avatars")
+              .remove([
+                filename,
+              ]);
+
+            alert(
+              updateError.message
+            );
+            return;
+          }
+
+          // Show immediately.
+          setAvatar(
+            newAvatarUrl
+          );
+
+          // Remove old avatar.
+          if (
+            oldAvatar &&
+            oldAvatar.startsWith(
+              "http"
+            )
+          ) {
+            try {
+              const url =
+                new URL(
+                  oldAvatar
+                );
+
+              const marker =
+                "/storage/v1/object/public/avatars/";
+
+              const index =
+                url.pathname.indexOf(
+                  marker
+                );
+
+              if (index !== -1) {
+                const oldPath =
+                  decodeURIComponent(
+                    url.pathname.substring(
+                      index +
+                        marker.length
+                    )
                   );
+
+                if (
+                  oldPath &&
+                  oldPath !==
+                    filename
+                ) {
+                  const {
+                    error:
+                      deleteError,
+                  } =
+                    await supabase
+                      .storage
+                      .from(
+                        "avatars"
+                      )
+                      .remove([
+                        oldPath,
+                      ]);
+
+                  if (
+                    deleteError
+                  ) {
+                    console.error(
+                      "Old avatar cleanup error:",
+                      deleteError
+                    );
+                  }
                 }
               }
+            } catch (error) {
+              console.error(
+                "Failed to delete old avatar:",
+                error
+              );
             }
-          } catch (error) {
-            console.error(
-              "Failed to delete old avatar:",
-              error
-            );
           }
-        }
 
-        alert("Avatar updated!");
-      }, "image/jpeg", 0.8);
+          alert(
+            "Avatar updated!"
+          );
+        },
+        "image/jpeg",
+        0.8
+      );
     };
   };
 }
+
   
   async function saveProfile() {
 

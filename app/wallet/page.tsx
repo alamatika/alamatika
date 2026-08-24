@@ -535,51 +535,6 @@ async function unlockWithCredits() {
             </div>
 
 
-            {/* ₱1200 */}
-            <div
-              className="bg-zinc-800 border border-zinc-700 hover:border-yellow-500 rounded-xl p-4 text-left transition"
-            >
-
-              <div className="flex justify-between items-center gap-3">
-
-                <div>
-
-                  <h3 className="text-2xl font-bold text-yellow-400">
-                    ₱1200
-                  </h3>
-
-                  <p className="text-gray-400 text-sm mt-1">
-                    💎 Receive 1200 Credits
-                  </p>
-
-                  <p className="text-gray-500 text-xs mt-2">
-                    Best for binge reading.
-                  </p>
-
-                </div>
-
-                <div className="flex flex-col gap-2 shrink-0">
-  <button
-  type="button"
-    onClick={() => buyCredits(1200)}
-    className="bg-yellow-500 text-black px-4 py-2 rounded-lg font-bold text-sm hover:bg-yellow-400 transition"
-  >
-    PayMongo
-  </button>
-
-  <button
-  type="button"
-    onClick={() => setManualPaymentAmount(1200)}
-    className="border border-zinc-600 text-gray-300 px-4 py-2 rounded-lg font-bold text-sm hover:border-yellow-500 hover:text-yellow-400 transition"
-  >
-    Manual
-  </button>
-</div>
-
-              </div>
-
-            </div>
-
           </div>
 
           {manualPaymentAmount !== null && (

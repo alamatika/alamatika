@@ -15,7 +15,8 @@ export default function EditPostPage() {
   const [category, setCategory] = useState("");
   const [content, setContent] = useState("");
   const [image, setImage] = useState("");
-  const [uploading, setUploading] = useState(false);
+const [oldImage, setOldImage] = useState("");
+const [uploading, setUploading] = useState(false);
 
 
   useEffect(() => {
@@ -27,11 +28,13 @@ export default function EditPostPage() {
         .single();
 
       if (data) {
-        setTitle(data.title);
-        setCategory(data.category);
-        setContent(data.content);
-        setImage(data.image ?? "");
-      }
+  setTitle(data.title);
+  setCategory(data.category);
+  setContent(data.content);
+
+  setImage(data.image ?? "");
+  setOldImage(data.image ?? "");
+}
 
       setLoading(false);
     }
@@ -62,8 +65,7 @@ export default function EditPostPage() {
   }
 }
   
-  async function uploadImage(file: File) {
-
+async function uploadImage(file: File) {
   if (file.size > 10 * 1024 * 1024) {
     alert("Maximum image size is 10MB.");
     return;
@@ -71,100 +73,160 @@ export default function EditPostPage() {
 
   setUploading(true);
 
-  const img = new Image();
-  const reader = new FileReader();
+  try {
+    const img = new Image();
+    const reader = new FileReader();
 
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
 
-  reader.onload = () => {
+    reader.onload = () => {
+      img.src = reader.result as string;
 
-    img.src = reader.result as string;
+      img.onload = async () => {
+        const canvas =
+          document.createElement("canvas");
 
-    img.onload = async () => {
+        const ctx =
+          canvas.getContext("2d");
 
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          alert("Could not process image.");
+          setUploading(false);
+          return;
+        }
 
-      const maxSize = 1280;
+        const maxSize = 1280;
 
-      let width = img.width;
-      let height = img.height;
+        let width = img.width;
+        let height = img.height;
 
-      if (width > height && width > maxSize) {
-        height *= maxSize / width;
-        width = maxSize;
-      }
+        if (
+          width > height &&
+          width > maxSize
+        ) {
+          height *= maxSize / width;
+          width = maxSize;
+        }
 
-      if (height > width && height > maxSize) {
-        width *= maxSize / height;
-        height = maxSize;
-      }
+        if (
+          height > width &&
+          height > maxSize
+        ) {
+          width *= maxSize / height;
+          height = maxSize;
+        }
 
-      canvas.width = width;
-      canvas.height = height;
+        canvas.width = width;
+        canvas.height = height;
 
-      ctx?.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          width,
+          height
+        );
 
-      canvas.toBlob(async (blob) => {
+        canvas.toBlob(
+          async (blob) => {
+            if (!blob) {
+              alert(
+                "Could not process image."
+              );
+              setUploading(false);
+              return;
+            }
 
-        if (!blob) return;
+            const filename =
+              `${Date.now()}-${Math.random()
+                .toString(36)
+                .slice(2)}.jpg`;
 
-        const filename = `${Date.now()}.jpg`;
+            const { error: uploadError } =
+              await supabase.storage
+                .from("community-images")
+                .upload(
+                  filename,
+                  blob,
+                  {
+                    contentType:
+                      "image/jpeg",
+                    upsert: false,
+                  }
+                );
 
-const oldImage = image;
+            if (uploadError) {
+              alert(
+                uploadError.message
+              );
+              setUploading(false);
+              return;
+            }
 
-const { error } = await supabase.storage
-  .from("community-images")
-  .upload(filename, blob);
+            const { data } =
+              supabase.storage
+                .from("community-images")
+                .getPublicUrl(
+                  filename
+                );
 
-if (error) {
-  alert(error.message);
-  setUploading(false);
-  return;
-}
+            // Only change the current
+            // preview. The old image stays
+            // safe until Save Changes.
+            setImage(data.publicUrl);
 
-const { data } = supabase.storage
-  .from("community-images")
-  .getPublicUrl(filename);
-
-setImage(data.publicUrl);
-
-// Delete the old image after the new one succeeds
-if (oldImage) {
-  await deleteCommunityImage(oldImage);
-}
-
-setUploading(false);
-
-      }, "image/jpeg", 0.75);
-
+            setUploading(false);
+          },
+          "image/jpeg",
+          0.75
+        );
+      };
     };
-
-  };
-
-}
-  
-
-  async function saveChanges() {
-    const { error } = await supabase
-      .from("community")
-      .update({
-        title,
-        category,
-        content,
-        image,
-      })
-      .eq("id", Number(id));
-
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert("Post updated!");
-
-    router.push(`/community/${id}`);
+  } catch (error) {
+    console.error(error);
+    alert("Failed to upload image.");
+    setUploading(false);
   }
+}
+
+async function saveChanges() {
+  if (uploading) return;
+
+  const { error } = await supabase
+    .from("community")
+    .update({
+      title,
+      category,
+      content,
+      image,
+    })
+    .eq("id", Number(id));
+
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  // Only delete the old image AFTER the
+  // database successfully points to the
+  // new image.
+  if (
+    oldImage &&
+    oldImage !== image
+  ) {
+    await deleteCommunityImage(
+      oldImage
+    );
+  }
+
+  // The newly selected image is now
+  // the official image.
+  setOldImage(image);
+
+  alert("Post updated!");
+
+  router.push(`/community/${id}`);
+}
 
   if (loading) {
     return (

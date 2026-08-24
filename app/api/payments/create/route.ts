@@ -54,17 +54,25 @@ if (!validPackage) {
     }
 
     // Create our own pending purchase first.
-    const { data: purchase, error: purchaseError } = await supabaseAdmin
-      .from("credit_purchases")
-      .insert({
-        user_id: user.id,
-        credits,
-        peso_amount: credits,
-        payment_provider: "PayMongo",
-        status: "pending",
-      })
-      .select()
-      .single();
+// PayMongo QR payments are given 30 minutes to complete.
+const expiresAt = new Date(
+  Date.now() + 30 * 60 * 1000
+).toISOString();
+
+const { data: purchase, error: purchaseError } = await supabaseAdmin
+  .from("credit_purchases")
+  .insert({
+    user_id: user.id,
+    credits,
+    peso_amount: credits,
+    payment_provider: "PayMongo",
+    status: "pending",
+    expires_at: new Date(
+      Date.now() + 30 * 60 * 1000
+    ).toISOString(),
+  })
+  .select()
+  .single();
 
     if (purchaseError || !purchase) {
       console.error(purchaseError);

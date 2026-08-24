@@ -86,6 +86,13 @@ async function handleLogin() {
   className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-4 py-3 md:px-5 md:py-4 text-sm md:text-base focus:outline-none focus:border-yellow-400"
 />
 
+  <Link
+  href="/forgot-password"
+  className="block text-right text-sm text-gray-500 hover:text-yellow-400 transition"
+>
+  Forgot Password?
+</Link>
+
   <button
     onClick={handleLogin}
     className="w-full bg-yellow-500 text-black font-bold py-3 md:py-4 rounded-xl hover:bg-yellow-400 transition"
@@ -112,12 +119,7 @@ async function handleLogin() {
   Create Account
 </Link>
 
-  <Link
-  href="/forgot-password"
-  className="block text-center text-gray-500 hover:text-yellow-400"
->
-  Forgot Password?
-</Link>
+  
 
 </div>
 
