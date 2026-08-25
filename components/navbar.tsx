@@ -351,33 +351,38 @@ function handleLogoClick() {
   )}
 </div>
 
-<Link
-  href="/notifications"
-  className="relative hover:opacity-80 transition flex items-center"
->
-  <span className="text-2xl">🔔</span>
+{user && (
+  <>
+    <Link
+      href="/notifications"
+      className="relative hover:opacity-80 transition flex items-center"
+    >
+      <span className="text-2xl">🔔</span>
 
-  {notificationCount > 0 && (
-    <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
-      {notificationCount}
-    </span>
-  )}
-</Link>
+      {notificationCount > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
+          {notificationCount}
+        </span>
+      )}
+    </Link>
 
-<button
-  onClick={() => setChatOpen(true)}
-  className="relative hover:opacity-80 transition text-2xl"
->
-  💬
+    <button
+      type="button"
+      onClick={() => setChatOpen(true)}
+      className="relative hover:opacity-80 transition text-2xl"
+    >
+      💬
 
-  {chatUnreadCount > 0 && (
-    <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
-      {chatUnreadCount > 99
-        ? "99+"
-        : chatUnreadCount}
-    </span>
-  )}
-</button>
+      {chatUnreadCount > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-bold px-1">
+          {chatUnreadCount > 99
+            ? "99+"
+            : chatUnreadCount}
+        </span>
+      )}
+    </button>
+  </>
+)}
 
         {user ? (
   <div
