@@ -10,13 +10,16 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showConfirmation, setShowConfirmation] =
+  useState(false);
+  const [showPassword, setShowPassword] =
+  useState(false);
 
   async function handleRegister() {
 
       if (!acceptedTerms) {
-  alert(
-    "Please agree to the Terms of Service and Privacy Policy before creating an account."
-  );
+        setPassword("");
+  setShowConfirmation(true);
   return;
 }
 
@@ -107,13 +110,40 @@ export default function RegisterPage() {
             className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-5 py-4 focus:outline-none focus:border-yellow-400"
           />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-5 py-4 focus:outline-none focus:border-yellow-400"
-          />
+          <div className="relative">
+
+  <input
+    type={
+      showPassword
+        ? "text"
+        : "password"
+    }
+    placeholder="Password"
+    value={password}
+    onChange={(e) =>
+      setPassword(e.target.value)
+    }
+    className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-5 py-4 pr-14 focus:outline-none focus:border-yellow-400"
+  />
+
+  <button
+    type="button"
+    onClick={() =>
+      setShowPassword(
+        (current) => !current
+      )
+    }
+    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-yellow-400 transition"
+    aria-label={
+      showPassword
+        ? "Hide password"
+        : "Show password"
+    }
+  >
+    {showPassword ? "🙈" : "👁️"}
+  </button>
+
+</div>
 
           <div className="flex items-start gap-3">
   <input
@@ -173,6 +203,44 @@ export default function RegisterPage() {
         </div>
 
       </section>
+
+{showConfirmation && (
+  <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-sm px-4">
+
+    <div className="w-full max-w-md rounded-2xl bg-zinc-900 border border-yellow-500/40 shadow-2xl p-8 text-center">
+
+      <div className="text-5xl mb-4">
+        📧
+      </div>
+
+      <h2 className="text-2xl font-bold text-yellow-400">
+        Account Created!
+      </h2>
+
+      <p className="text-gray-300 mt-4 leading-7">
+        Your Alamatika account has been created.
+      </p>
+
+      <p className="text-gray-400 mt-2 leading-7">
+        Please check your email and click the
+        verification link before logging in.
+      </p>
+
+      <button
+        type="button"
+        onClick={() => {
+          setShowConfirmation(false);
+        }}
+        className="mt-6 w-full py-3 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition"
+      >
+        Got It
+      </button>
+
+    </div>
+
+  </div>
+)}
+
     </main>
   );
 }

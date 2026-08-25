@@ -17,33 +17,126 @@ type LoreEntry = {
 export default function Lore() {
 
   const [loreEntries, setLoreEntries] = useState<LoreEntry[]>([]);
+  const [search, setSearch] = useState("");
+const [page, setPage] = useState(1);
+const [totalLore, setTotalLore] = useState(0);
+const [loadingLore, setLoadingLore] = useState(false);
+
+const lorePerPage = 10;
   const [appearance, setAppearance] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    async function loadLore() {
+  let cancelled = false;
 
-      const { data: appearanceRows } = await supabase
-  .from("appearance")
-  .select("*");
+  async function initialLoad() {
+    setLoadingLore(true);
 
-const map: Record<string, string> = {};
+    try {
+      const { data: appearanceRows } =
+        await supabase
+          .from("appearance")
+          .select("*");
 
-appearanceRows?.forEach((item) => {
-  map[item.key] = item.value;
-});
+      const appearanceMap: Record<
+        string,
+        string
+      > = {};
 
-setAppearance(map);
+      appearanceRows?.forEach((item) => {
+        appearanceMap[item.key] = item.value;
+      });
 
-      const { data } = await supabase
+      if (!cancelled) {
+        setAppearance(appearanceMap);
+      }
+
+      const {
+        data,
+        error,
+        count,
+      } = await supabase
         .from("lore")
-        .select("*")
-        .order("title");
+        .select("*", {
+          count: "exact",
+        })
+        .order("title")
+        .range(0, lorePerPage - 1);
 
-      setLoreEntries(data ?? []);
+      if (error) {
+        console.error(error);
+        return;
+      }
+
+      if (!cancelled) {
+        setLoreEntries(data ?? []);
+        setTotalLore(count ?? 0);
+        setPage(1);
+      }
+    } finally {
+      if (!cancelled) {
+        setLoadingLore(false);
+      }
+    }
+  }
+
+  initialLoad();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
+async function loadLore(
+  targetPage: number,
+  searchTerm = search
+) {
+  setLoadingLore(true);
+
+  try {
+    const from =
+      (targetPage - 1) *
+      lorePerPage;
+
+    const to =
+      from +
+      lorePerPage -
+      1;
+
+    let query = supabase
+      .from("lore")
+      .select("*", {
+        count: "exact",
+      })
+      .order("title")
+      .range(from, to);
+
+    const trimmedSearch =
+      searchTerm.trim();
+
+    if (trimmedSearch) {
+      query = query.or(
+        `title.ilike.%${trimmedSearch}%,category.ilike.%${trimmedSearch}%`
+      );
     }
 
-    loadLore();
-  }, []);
+    const {
+      data,
+      error,
+      count,
+    } = await query;
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setLoreEntries(data ?? []);
+    setTotalLore(count ?? 0);
+    setPage(targetPage);
+  } finally {
+    setLoadingLore(false);
+  }
+}
 
   return (
   
@@ -66,12 +159,59 @@ setAppearance(map);
         </h1>
 
         <p className="text-center text-sm md:text-base text-gray-300 mb-10 md:mb-16 px-2">
-          Explore the myths, legends, creatures, and beliefs of the Philippines.
+          Explore the myths, legends, creatures, and beliefs
         </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
+        <div className="max-w-xl mx-auto mb-8">
 
-  {loreEntries.map((entry) => (
+  <div className="flex gap-2">
+
+    <input
+      type="text"
+      value={search}
+      onChange={(e) =>
+        setSearch(e.target.value)
+      }
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          loadLore(1, search);
+        }
+      }}
+      placeholder="🔎 Search lore..."
+      className="flex-1 rounded-xl bg-zinc-900/80 border border-zinc-700 px-4 py-3 text-sm md:text-base focus:outline-none focus:border-yellow-400"
+    />
+
+    <button
+      type="button"
+      onClick={() =>
+        loadLore(1, search)
+      }
+      className="px-5 py-3 rounded-xl bg-yellow-500 text-black font-bold hover:bg-yellow-400 transition"
+    >
+      Search
+    </button>
+
+  </div>
+
+</div>
+
+        {loadingLore ? (
+
+  <div className="text-center text-gray-500 py-16">
+    Loading lore...
+  </div>
+
+) : loreEntries.length === 0 ? (
+
+  <div className="text-center text-gray-500 py-16">
+    No lore found.
+  </div>
+
+) : (
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-8">
+
+    {loreEntries.map((entry) => (
 
     
 
@@ -96,8 +236,85 @@ setAppearance(map);
     </Link>
 
   ))}
+    </div>
+)}
 
-</div>
+{totalLore > lorePerPage && (
+
+  <div className="flex flex-wrap justify-center items-center gap-2 mt-10">
+
+    <button
+      type="button"
+      disabled={page === 1}
+      onClick={() =>
+        loadLore(
+          page - 1,
+          search
+        )
+      }
+      className="px-3 py-2 rounded-lg border border-zinc-700 text-gray-300 hover:border-yellow-500 hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed"
+    >
+      ←
+    </button>
+
+    {Array.from(
+      {
+        length: Math.ceil(
+          totalLore /
+            lorePerPage
+        ),
+      },
+      (_, index) => {
+        const pageNumber =
+          index + 1;
+
+        return (
+          <button
+            key={pageNumber}
+            type="button"
+            onClick={() =>
+              loadLore(
+                pageNumber,
+                search
+              )
+            }
+            className={`min-w-9 px-3 py-2 rounded-lg font-bold transition ${
+              page === pageNumber
+                ? "bg-yellow-500 text-black"
+                : "bg-zinc-800 text-gray-300 hover:bg-zinc-700"
+            }`}
+          >
+            {pageNumber}
+          </button>
+        );
+      }
+    )}
+
+    <button
+      type="button"
+      disabled={
+        page >=
+        Math.ceil(
+          totalLore /
+            lorePerPage
+        )
+      }
+      onClick={() =>
+        loadLore(
+          page + 1,
+          search
+        )
+      }
+      className="px-3 py-2 rounded-lg border border-zinc-700 text-gray-300 hover:border-yellow-500 hover:text-yellow-400 disabled:opacity-30 disabled:cursor-not-allowed"
+    >
+      →
+    </button>
+
+  </div>
+
+)}
+
+
         <footer className="mt-24 mb-10 text-gray-600 text-sm text-center">
         © Alamatika. All Rights Reserved.
         <br />
