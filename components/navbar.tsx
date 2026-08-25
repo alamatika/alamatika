@@ -517,7 +517,7 @@ function handleLogoClick() {
 </div>
 
 {mobileMenuOpen && (
-  <div className="fixed top-20 left-0 w-full bg-black/60 backdrop-blur-xl border-b border-yellow-500/20 shadow-2xl z-40 flex flex-col items-center py-5 gap-3 md:hidden text-sm">
+  <div className="fixed top-20 left-0 w-full max-h-[calc(100vh-5rem)] overflow-y-auto bg-black/60 backdrop-blur-xl border-b border-yellow-500/20 shadow-2xl z-40 flex flex-col items-center py-5 gap-3 md:hidden text-sm">
 
     <Link href="/" onClick={() => setMobileMenuOpen(false)}>
       Home

@@ -18,6 +18,7 @@ type Chapter = {
   pages: number;
 };
 
+
 export default function CreatorStudio() {
   const [totalChapters, setTotalChapters] = useState(0);
   const [publishedChapters, setPublishedChapters] = useState(0);
@@ -26,6 +27,39 @@ export default function CreatorStudio() {
   const [recentChapters, setRecentChapters] = useState<Chapter[]>([]);
   const [publishingQueue, setPublishingQueue] = useState<Chapter[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [pendingManualPayments, setPendingManualPayments] = useState(0);
+
+async function loadPendingManualPayments() {
+  try {
+    const response = await fetch(
+      "/api/creator/payments",
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Could not load pending payments:",
+        result?.error
+      );
+      return;
+    }
+
+    setPendingManualPayments(
+      result.pendingPayments?.length ?? 0
+    );
+  } catch (error) {
+    console.error(
+      "Pending payments error:",
+      error
+    );
+  }
+}
 
   const [stats, setStats] = useState({
     users: 0,
@@ -230,6 +264,9 @@ setStats({
 setUnreadMessages(
   creatorMessages.count ?? 0
 );
+
+await loadPendingManualPayments();
+
   
   }
 
@@ -575,9 +612,17 @@ useEffect(() => {
 
 <Link
   href="/creator/payments"
-  className="bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
+  className="relative bg-zinc-800 rounded-xl p-5 text-center hover:bg-zinc-700 transition"
 >
   💳 Manual Payments
+
+  {pendingManualPayments > 0 && (
+    <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full min-w-[20px] h-[20px] px-1 flex items-center justify-center text-[10px] font-bold">
+      {pendingManualPayments > 99
+        ? "99+"
+        : pendingManualPayments}
+    </span>
+  )}
 </Link>
 
 <Link

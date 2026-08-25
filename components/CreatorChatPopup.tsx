@@ -9,6 +9,14 @@ type Conversation = {
   status: string;
   created_at: string;
 
+  latest_message?: {
+    id: number;
+    conversation_id: number;
+    message: string;
+    sender: string;
+    created_at: string;
+  } | null;
+
   profiles: {
     id: string;
     username: string | null;
@@ -127,24 +135,27 @@ async function markConversationRead(
 async function loadChat(
   conversationId: number
 ) {
-  const {
-    data,
-    error,
-  } = await supabase
-    .from("creator_messages")
-    .select("*")
-    .eq(
-      "conversation_id",
-      conversationId
-    )
-    .order("created_at", {
-      ascending: true,
-    });
-
-  if (error) {
-    console.error(error);
-    return;
+  const response = await fetch(
+  `/api/creator/chat-messages?conversationId=${conversationId}`,
+  {
+    method: "GET",
+    credentials: "include",
+    cache: "no-store",
   }
+);
+
+const result = await response.json();
+
+if (!response.ok) {
+  console.error(
+    "Load creator conversation failed:",
+    result?.error
+  );
+  return;
+}
+
+const data: ChatMessage[] =
+  result.messages ?? [];
 
   const messagesWithAttachments =
     await Promise.all(
@@ -214,42 +225,36 @@ async function sendReply() {
 
   if (!reply.trim()) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return;
-
   setSendingReply(true);
 
   try {
-    const { error } = await supabase
-      .from("creator_messages")
-      .insert({
-        conversation_id:
-          selectedConversation,
-        user_id: user.id,
-        sender: "creator",
-        subject: "Conversation",
-        message: reply.trim(),
-        status: "answered",
-        is_read: false,
-      });
+    const response = await fetch(
+  "/api/creator/chat-messages",
+  {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type":
+        "application/json",
+    },
+    body: JSON.stringify({
+      conversationId:
+        selectedConversation,
+      message: reply.trim(),
+    }),
+  }
+);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
+const result = await response.json();
 
-    await supabase
-      .from("creator_conversations")
-      .update({
-        status: "answered",
-      })
-      .eq(
-        "id",
-        selectedConversation
-      );
+if (!response.ok) {
+  alert(
+    result?.error ??
+      "Could not send reply."
+  );
+  return;
+}
+
 
     setReply("");
 
@@ -264,44 +269,35 @@ async function sendReply() {
 }
 
 async function loadConversations() {
+  try {
+    const response = await fetch(
+      "/api/creator/chat-conversations",
+      {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+      }
+    );
 
-  const { data: conversations, error } = await supabase
-    .from("creator_conversations")
-    .select("*")
-    .order("created_at", {
-      ascending: false,
-    });
-    console.log("Conversation count:", conversations?.length);
-console.log(conversations);
+    const result = await response.json();
 
-  if (error) {
-    console.log(error);
-    return;
+    if (!response.ok) {
+      console.error(
+        "Conversation loading failed:",
+        result?.error
+      );
+      return;
+    }
+
+    setConversations(
+      result.conversations ?? []
+    );
+  } catch (error) {
+    console.error(
+      "Conversation loading error:",
+      error
+    );
   }
-
-  const userIds = conversations.map(
-    (c) => c.user_id
-  );
-
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, username, avatar")
-    .in("id", userIds);
-
-  const merged = conversations.map((conversation) => ({
-
-    ...conversation,
-
-    profiles:
-      profiles?.find(
-        (p) => p.id === conversation.user_id
-      ) ?? null,
-
-  }));
-  console.log("RAW:", conversations);
-console.log("MERGED:", merged);
-
-  setConversations(merged);
 }
 
 useEffect(() => {
@@ -366,16 +362,6 @@ if (
   );
 }
 
-        if (
-          open &&
-          selectedConversation &&
-          message.conversation_id ===
-            selectedConversation
-        ) {
-          await loadChat(
-            selectedConversation
-          );
-        }
       }
     )
     .subscribe();
@@ -507,9 +493,10 @@ return (
                             "Unknown Reader"}
                         </p>
 
-                        <p className="text-xs text-gray-400 mt-1">
-                          {conversation.status}
-                        </p>
+                        <p className="text-xs text-gray-400 mt-1 truncate">
+  {conversation.latest_message?.message ||
+    "No messages yet."}
+</p>
 
                       </div>
 

@@ -217,25 +217,34 @@ export default async function SeasonChapterPage({
 
           </div>
 
-          {credits >= 25 ? (
-            <ChapterUnlockButton
-  chapterId={String(
-    chapterData.id
-  )}
-  chapterNumber={chapterNumber}
-  storyId={String(story.id)}
-  seasonId={String(season.id)}
-/>
-          ) : (
-            <a
-              href={`/wallet?redirect=${encodeURIComponent(
-                `/read/story/${story.id}/season/${season.id}/chapter-${chapterNumber}`
-              )}`}
-              className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
-            >
-              💎 Buy Credits
-            </a>
-          )}
+          {!user ? (
+  <a
+    href={`/login?redirect=${encodeURIComponent(
+      `/read/story/${story.id}/season/${season.id}/chapter-${chapterNumber}`
+    )}`}
+    className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+  >
+    🔐 Log In to Unlock
+  </a>
+) : credits >= 25 ? (
+  <ChapterUnlockButton
+    chapterId={String(
+      chapterData.id
+    )}
+    chapterNumber={chapterNumber}
+    storyId={String(story.id)}
+    seasonId={String(season.id)}
+  />
+) : (
+  <a
+    href={`/wallet?redirect=${encodeURIComponent(
+      `/read/story/${story.id}/season/${season.id}/chapter-${chapterNumber}`
+    )}`}
+    className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+  >
+    💎 Buy Credits
+  </a>
+)}
 
         </div>
 
