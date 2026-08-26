@@ -1,5 +1,4 @@
 
-import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "../../../../../../../lib/supabaseServer";
 import Navbar from "../../../../../../../components/navbar";
 import ChapterNavigation from "../../../../../../../components/ChapterNavigation";
@@ -8,6 +7,7 @@ import ChapterComments from "../../../../../../../components/ChapterComments";
 import ChapterImages from "../../../../../../../components/ChapterImages";
 import ChapterUnlockButton from "../../../../../../../components/ChapterUnlockButton";
 import { notFound } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 type Props = {
   params: Promise<{
@@ -40,40 +40,30 @@ export default async function SeasonChapterPage({
   const supabase =
     await createSupabaseServerClient();
 
-  const cookieStore = await cookies();
-
-  console.log(
-    "ALL COOKIES:",
-    cookieStore.getAll()
-  );
+  const storageAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  }
+);
 
   // Current user
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+ const {
+  data: { user },
+} = await supabase.auth.getUser();
 
-  console.log(
-    "SERVER SESSION:",
-    session
-  );
-  console.log(
-    "SESSION ERROR:",
-    sessionError
-  );
-
-  const user = session?.user ?? null;
-
-  console.log(
-    "SERVER USER:",
-    user
-  );
 
   // Story
   const { data: story, error: storyError } =
     await supabase
       .from("stories")
-      .select("id, title")
+      .select(
+  "id, title, watermark_enabled, watermark_text"
+)
       .eq("id", storyId)
       .eq("published", true)
       .single();
@@ -146,10 +136,6 @@ export default async function SeasonChapterPage({
 
     alreadyUnlocked = !!unlock;
 
-    console.log(
-      "UNLOCK FOUND:",
-      unlock
-    );
 
     const { data: profile } =
       await supabase
@@ -252,6 +238,93 @@ export default async function SeasonChapterPage({
     );
   }
 
+  let readerImages =
+  chapterData.page_images ?? [];
+
+if (chapterData.locked) {
+  const pageImages =
+    chapterData.page_images ?? [];
+
+  const premiumPaths =
+    pageImages.filter(
+      (item: unknown): item is string =>
+        typeof item === "string" &&
+        !item.startsWith("http")
+    );
+
+  const oldPublicUrls =
+    pageImages.filter(
+      (item: unknown): item is string =>
+        typeof item === "string" &&
+        item.startsWith("http")
+    );
+
+  let signedByPath = new Map<
+    string,
+    string
+  >();
+
+  if (premiumPaths.length > 0) {
+    const {
+      data: signedPages,
+      error: signedPagesError,
+    } = await storageAdmin.storage
+      .from("premium-pages")
+      .createSignedUrls(
+        premiumPaths,
+        60 * 10
+      );
+
+    if (signedPagesError) {
+      console.error(
+        "Premium page URL error:",
+        signedPagesError
+      );
+
+      notFound();
+    }
+
+    signedByPath =
+      new Map<string, string>();
+
+    for (const item of signedPages ?? []) {
+      if (
+        item.path &&
+        item.signedUrl
+      ) {
+        signedByPath.set(
+          item.path,
+          item.signedUrl
+        );
+      }
+    }
+  }
+
+  const resolvedImages: (string | null)[] =
+  pageImages.map((item: string) => {
+    if (item.startsWith("http")) {
+      return item;
+    }
+
+    return signedByPath.get(item) ?? null;
+  });
+
+readerImages =
+  resolvedImages.filter(
+    (item: string | null) =>
+      item !== null
+  );
+}
+
+const readerWatermark =
+  chapterData.locked &&
+  story?.watermark_enabled
+    ? (
+        story.watermark_text?.trim() ||
+        "ALAMATIKA • © 2026"
+      )
+    : undefined;
+
   // Reader
   return (
     <main className="min-h-screen bg-black text-white pt-28">
@@ -279,19 +352,20 @@ export default async function SeasonChapterPage({
         <div id="reader">
 
           <ChapterImages
-            images={
-              chapterData.page_images ?? []
-            }
-          />
+  images={readerImages}
+  watermark={readerWatermark}
+/>
 
         </div>
 
       </div>
 
       <ChapterNavigation
-        current={chapterNumber}
-        total={totalChapters ?? 0}
-      />
+  current={chapterNumber}
+  total={totalChapters ?? 0}
+  storyId={story.id}
+  seasonId={season.id}
+/>
 
       <hr className="max-w-5xl mx-auto my-10 border-zinc-800" />
 

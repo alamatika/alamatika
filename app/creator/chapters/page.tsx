@@ -230,17 +230,17 @@ const premiumChapters =
                         {/* SEASON */}
 
                         {season ? (
-                          <p className="text-gray-500 text-sm mt-1">
-                            📕 Season{" "}
-                            {season.season_number}
-                            {" — "}
-                            {season.title}
-                          </p>
-                        ) : (
-                          <p className="text-red-400 text-sm mt-1">
-                            ⚠ No Season Assigned
-                          </p>
-                        )}
+  <Link
+    href={`/read/story/${season.story_id}/season/${season.id}/chapter-${chapter.chapter}`}
+    className="px-4 py-3 rounded-lg border border-blue-500 hover:bg-blue-500 transition"
+  >
+    👁 View
+  </Link>
+) : (
+  <span className="px-4 py-3 rounded-lg border border-zinc-700 text-gray-500">
+    ⚠ No Season
+  </span>
+)}
 
                         {/* CHAPTER */}
 

@@ -23,6 +23,8 @@ export default function EditChapter() {
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState("");
   const [pageImages, setPageImages] = useState<string[]>([]);
+  const [pagePaths, setPagePaths] =
+  useState<string[]>([]);
 
   const [published, setPublished] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -94,6 +96,62 @@ export default function EditChapter() {
       );
     }
   }
+
+  async function removePremiumPage(
+  path: string
+) {
+  if (!path) return;
+
+  try {
+    const response = await fetch(
+      "/api/creator/premium-page-delete",
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          path,
+        }),
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Premium page cleanup failed:",
+        result?.error
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Premium page cleanup error:",
+      error
+    );
+  }
+}
+
+  async function removePublicPage(
+  path: string
+) {
+  if (!path) return;
+
+  const { error } =
+    await supabase.storage
+      .from("pages")
+      .remove([path]);
+
+  if (error) {
+    console.error(
+      "Failed to clean up public page:",
+      error
+    );
+  }
+}
 
   /*
    * Upload a new chapter cover.
@@ -186,95 +244,215 @@ export default function EditChapter() {
    * New pages are appended to the existing array.
    */
   async function uploadPages(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = e.target.files;
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const files = e.target.files;
 
-    if (!files || files.length === 0) return;
+  if (!files || files.length === 0) return;
 
-    try {
-      setUploading(true);
-      setUploadProgress(0);
-      setTotalUploads(files.length);
+  const newlyUploaded: {
+      bucket: "pages" | "premium-pages";
+      path: string;
+    }[] = [];
 
-      const updatedPages = [...pageImages];
+  try {
+    setUploading(true);
+    setUploadProgress(0);
+    setTotalUploads(files.length);
 
-      for (const file of Array.from(files)) {
-        const compressed = await imageCompression(file, {
+    const updatedPages = [...pageImages];
+    const updatedPaths = [...pagePaths];
+
+    for (const file of Array.from(files)) {
+      const compressed =
+        await imageCompression(file, {
           maxWidthOrHeight: 1800,
-          maxSizeMB: 1,
+          maxSizeMB: 2,
           useWebWorker: true,
-          initialQuality: 0.85,
+          initialQuality: 0.95,
         });
 
-        /*
-         * The page's position in the current array determines
-         * its displayed page number.
-         */
-        const pageNumber = updatedPages.length + 1;
+      const pageNumber =
+        updatedPages.length + 1;
 
+      /*
+       * PREMIUM CHAPTER
+       */
+      if (locked) {
+        const formData =
+          new FormData();
+
+        formData.append(
+          "file",
+          compressed
+        );
+
+        formData.append(
+          "chapterNumber",
+          chapterNumber
+        );
+
+        formData.append(
+          "pageNumber",
+          String(pageNumber)
+        );
+
+        const response = await fetch(
+          "/api/creator/premium-page-upload",
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ??
+              "Failed to upload premium page."
+          );
+        }
+
+        updatedPages.push(
+          result.previewUrl
+        );
+
+        updatedPaths.push(
+          result.path
+        );
+
+        newlyUploaded.push({
+          bucket: "premium-pages",
+          path: result.path,
+        });
+
+      } else {
+        /*
+         * FREE CHAPTER
+         */
         const extension =
-          file.name.split(".").pop()?.toLowerCase() || "jpg";
+          file.name
+            .split(".")
+            .pop()
+            ?.toLowerCase() || "jpg";
 
         const fileName =
-          `chapter-${chapterNumber}-page-${String(pageNumber).padStart(
+          `chapter-${chapterNumber}-page-${String(
+            pageNumber
+          ).padStart(
             2,
             "0"
           )}-${crypto.randomUUID()}.${extension}`;
 
-        /*
-         * Temporary preview.
-         */
-        const previewUrl = URL.createObjectURL(file);
+        const previewUrl =
+          URL.createObjectURL(file);
 
-        updatedPages.push(previewUrl);
-        setPageImages([...updatedPages]);
+        updatedPages.push(
+          previewUrl
+        );
 
-        const { error } = await supabase.storage
-          .from("pages")
-          .upload(fileName, compressed);
+        setPageImages([
+          ...updatedPages,
+        ]);
+
+        const { error } =
+          await supabase.storage
+            .from("pages")
+            .upload(
+              fileName,
+              compressed
+            );
 
         if (error) {
-          /*
-           * Remove the temporary preview if upload failed.
-           */
-          updatedPages.pop();
-          setPageImages([...updatedPages]);
-
-          setUploading(false);
-          alert(error.message);
-          return;
+          throw new Error(
+            error.message
+          );
         }
 
-        const { data } = supabase.storage
-          .from("pages")
-          .getPublicUrl(fileName);
+        const { data } =
+          supabase.storage
+            .from("pages")
+            .getPublicUrl(
+              fileName
+            );
 
-        /*
-         * Replace temporary preview with real Supabase URL.
-         */
-        updatedPages[updatedPages.length - 1] =
-          data.publicUrl;
+        updatedPages[
+          updatedPages.length - 1
+        ] = data.publicUrl;
 
-        setPageImages([...updatedPages]);
-
-        setUploadProgress(
-          (previous) => previous + 1
+        updatedPaths.push(
+          data.publicUrl
         );
+
+        newlyUploaded.push({
+          bucket: "pages",
+          path: fileName,
+        });
       }
 
-      setHasUnsavedChanges(true);
-      setUploading(false);
+      setPageImages([
+        ...updatedPages,
+      ]);
 
-      alert("Pages uploaded!");
-    } catch (error) {
-      console.error(error);
-      setUploading(false);
-      alert("Something went wrong while uploading the pages.");
+      setPagePaths([
+        ...updatedPaths,
+      ]);
+
+      setUploadProgress(
+        (previous) =>
+          previous + 1
+      );
     }
 
+    setHasUnsavedChanges(true);
+    setUploading(false);
+
+    alert(
+      locked
+        ? "Premium pages uploaded!"
+        : "Pages uploaded!"
+    );
+
+  } catch (error) {
+    console.error(
+      "Upload pages error:",
+      error
+    );
+
+    /*
+     * Clean up anything uploaded during
+     * this attempt.
+     */
+    for (const uploaded of newlyUploaded) {
+      if (
+        uploaded.bucket ===
+        "premium-pages"
+      ) {
+        await removePremiumPage(
+          uploaded.path
+        );
+      } else {
+        await removePublicPage(
+  uploaded.path
+);
+      }
+    }
+
+    setUploading(false);
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong while uploading the pages."
+    );
+
+  } finally {
     e.target.value = "";
   }
+}
 
   /*
    * Reorder pages.
@@ -283,57 +461,135 @@ export default function EditChapter() {
    * It does not rename or delete Storage files.
    */
   function handleDragEnd(result: DropResult) {
-    if (!result.destination) return;
+  if (!result.destination) return;
 
-    const items = Array.from(pageImages);
+  const imageItems = Array.from(
+    pageImages
+  );
 
-    const [reorderedItem] = items.splice(
+  const pathItems = Array.from(
+    pagePaths
+  );
+
+  const [reorderedImage] =
+    imageItems.splice(
       result.source.index,
       1
     );
 
-    items.splice(
-      result.destination.index,
-      0,
-      reorderedItem
+  const [reorderedPath] =
+    pathItems.splice(
+      result.source.index,
+      1
     );
 
-    setPageImages(items);
-    setHasUnsavedChanges(true);
-  }
+  imageItems.splice(
+    result.destination.index,
+    0,
+    reorderedImage
+  );
+
+  pathItems.splice(
+    result.destination.index,
+    0,
+    reorderedPath
+  );
+
+  setPageImages(imageItems);
+  setPagePaths(pathItems);
+
+  setHasUnsavedChanges(true);
+}
 
   /*
    * Delete a single manga page.
    */
   async function deletePage(index: number) {
-    const confirmed = window.confirm(
-      `Delete Page ${index + 1}?`
-    );
+  const confirmed = window.confirm(
+    `Delete Page ${index + 1}?`
+  );
 
-    if (!confirmed) return;
+  if (!confirmed) return;
 
-    const url = pageImages[index];
+  const imageUrl = pageImages[index];
+  const pagePath = pagePaths[index];
 
-    /*
-     * Delete the actual Storage object.
-     */
-    if (url && url.startsWith("http")) {
-      await removeStorageFile(
-        url,
-        "pages"
+  if (!pagePath) {
+    alert("Could not find the page storage path.");
+    return;
+  }
+
+  /*
+   * PREMIUM PAGE
+   * Private storage path → secure Creator API.
+   */
+  if (
+    !pagePath.startsWith("http")
+  ) {
+    try {
+      const response = await fetch(
+        "/api/creator/premium-page-delete",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            path: pagePath,
+          }),
+        }
       );
-    }
 
-    /*
-     * Remove the URL from the local array.
-     */
-    const updatedPages = pageImages.filter(
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        alert(
+          result?.error ??
+            "Failed to delete premium page."
+        );
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Failed to delete premium page."
+      );
+      return;
+    }
+  }
+
+  /*
+   * FREE / PUBLIC PAGE
+   */
+  else if (imageUrl) {
+    await removeStorageFile(
+      imageUrl,
+      "pages"
+    );
+  }
+
+  /*
+   * Keep image previews and storage paths
+   * synchronized.
+   */
+  const updatedPages =
+    pageImages.filter(
       (_, i) => i !== index
     );
 
-    setPageImages(updatedPages);
-    setHasUnsavedChanges(true);
-  }
+  const updatedPaths =
+    pagePaths.filter(
+      (_, i) => i !== index
+    );
+
+  setPageImages(updatedPages);
+  setPagePaths(updatedPaths);
+  setHasUnsavedChanges(true);
+}
 
   /*
    * Replace one manga page.
@@ -342,69 +598,228 @@ export default function EditChapter() {
    * Old file is deleted only after the new file succeeds.
    */
   async function replacePage(
-    index: number,
-    file: File
-  ) {
-    try {
-      const oldUrl = pageImages[index];
+  index: number,
+  file: File
+) {
+  try {
+    const oldImageUrl =
+      pageImages[index];
 
-      const compressed = await imageCompression(file, {
+    const oldPagePath =
+      pagePaths[index];
+
+    if (!oldPagePath) {
+      alert(
+        "Could not find the existing page storage path."
+      );
+      return;
+    }
+
+    const compressed =
+      await imageCompression(file, {
         maxWidthOrHeight: 1800,
-        maxSizeMB: 1,
+        maxSizeMB: 2,
         useWebWorker: true,
-        initialQuality: 0.85,
+        initialQuality: 0.95,
       });
 
-      const extension =
-        file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const extension =
+      file.name
+        .split(".")
+        .pop()
+        ?.toLowerCase() || "jpg";
 
-      const fileName =
-        `chapter-${chapterNumber}-page-${String(index + 1).padStart(
-          2,
-          "0"
-        )}-${crypto.randomUUID()}.${extension}`;
+    /*
+     * PREMIUM PAGE
+     */
+    if (
+      !oldPagePath.startsWith("http")
+    ) {
+      const formData =
+        new FormData();
 
-      const { error } = await supabase.storage
-        .from("pages")
-        .upload(fileName, compressed);
+      formData.append(
+        "file",
+        compressed
+      );
 
-      if (error) {
-        alert(error.message);
+      formData.append(
+        "chapterNumber",
+        chapterNumber
+      );
+
+      formData.append(
+        "pageNumber",
+        String(index + 1)
+      );
+
+      const response = await fetch(
+        "/api/creator/premium-page-upload",
+        {
+          method: "POST",
+          credentials: "include",
+          body: formData,
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        alert(
+          result?.error ??
+            "Failed to replace premium page."
+        );
         return;
       }
 
-      const { data } = supabase.storage
-        .from("pages")
-        .getPublicUrl(fileName);
-
-      const updatedPages = [...pageImages];
-
-      updatedPages[index] = data.publicUrl;
-
-      setPageImages(updatedPages);
-      setHasUnsavedChanges(true);
-
       /*
-       * Delete the previous Storage file.
+       * New premium file exists.
+       * Now delete the old private file.
        */
-      if (
-        oldUrl &&
-        oldUrl.startsWith("http")
-      ) {
-        await removeStorageFile(
-          oldUrl,
-          "pages"
+      const deleteResponse =
+        await fetch(
+          "/api/creator/premium-page-delete",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              path: oldPagePath,
+            }),
+          }
+        );
+
+      const deleteResult =
+        await deleteResponse.json();
+
+      if (!deleteResponse.ok) {
+        console.error(
+          "Old premium page deletion failed:",
+          deleteResult?.error
         );
       }
 
-      alert(`Page ${index + 1} replaced!`);
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong while replacing the page.");
-    }
-  }
+      const updatedPages = [
+        ...pageImages,
+      ];
 
-  async function replaceAllPages(
+      const updatedPaths = [
+        ...pagePaths,
+      ];
+
+      updatedPages[index] =
+        result.previewUrl;
+
+      updatedPaths[index] =
+        result.path;
+
+      setPageImages(
+        updatedPages
+      );
+
+      setPagePaths(
+        updatedPaths
+      );
+
+      setHasUnsavedChanges(
+        true
+      );
+
+      alert(
+        `Page ${index + 1} replaced!`
+      );
+
+      return;
+    }
+
+    /*
+     * FREE / PUBLIC PAGE
+     */
+    const fileName =
+      `chapter-${chapterNumber}-page-${String(
+        index + 1
+      ).padStart(
+        2,
+        "0"
+      )}-${crypto.randomUUID()}.${extension}`;
+
+    const { error } =
+      await supabase.storage
+        .from("pages")
+        .upload(
+          fileName,
+          compressed
+        );
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    const { data } =
+      supabase.storage
+        .from("pages")
+        .getPublicUrl(
+          fileName
+        );
+
+    const updatedPages = [
+      ...pageImages,
+    ];
+
+    const updatedPaths = [
+      ...pagePaths,
+    ];
+
+    updatedPages[index] =
+      data.publicUrl;
+
+    updatedPaths[index] =
+      data.publicUrl;
+
+    setPageImages(
+      updatedPages
+    );
+
+    setPagePaths(
+      updatedPaths
+    );
+
+    setHasUnsavedChanges(
+      true
+    );
+
+    /*
+     * Delete old public file only
+     * after new upload succeeds.
+     */
+    if (
+      oldPagePath.startsWith("http")
+    ) {
+      await removeStorageFile(
+        oldPagePath,
+        "pages"
+      );
+    }
+
+    alert(
+      `Page ${index + 1} replaced!`
+    );
+
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      "Something went wrong while replacing the page."
+    );
+  }
+}
+
+ async function replaceAllPages(
   e: React.ChangeEvent<HTMLInputElement>
 ) {
   const files = e.target.files;
@@ -422,80 +837,185 @@ export default function EditChapter() {
     return;
   }
 
+  const uploadedFiles: {
+    bucket: "pages" | "premium-pages";
+    path: string;
+  }[] = [];
+
   try {
     setUploading(true);
     setUploadProgress(0);
-    setTotalUploads(selectedFiles.length);
+    setTotalUploads(
+      selectedFiles.length
+    );
 
-    const oldPages = [...pageImages];
+    const oldPaths = [...pagePaths];
+
     const newPages: string[] = [];
+    const newPaths: string[] = [];
 
     // ----------------------------------------
     // 1. Upload ALL new pages first
     // ----------------------------------------
 
-    for (let i = 0; i < selectedFiles.length; i++) {
+    for (
+      let i = 0;
+      i < selectedFiles.length;
+      i++
+    ) {
       const file = selectedFiles[i];
 
-      const compressed = await imageCompression(file, {
-        maxWidthOrHeight: 1800,
-        maxSizeMB: 1,
-        useWebWorker: true,
-        initialQuality: 0.85,
-      });
+      const compressed =
+        await imageCompression(file, {
+          maxWidthOrHeight: 1800,
+          maxSizeMB: 2,
+          useWebWorker: true,
+          initialQuality: 0.95,
+        });
 
-      const extension =
-        file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const pageNumber = i + 1;
 
-      const fileName =
-        `chapter-${chapterNumber}-page-${String(i + 1).padStart(
-          2,
-          "0"
-        )}-${crypto.randomUUID()}.${extension}`;
+      // ----------------------------------------
+      // PREMIUM
+      // ----------------------------------------
 
-      const { error } = await supabase.storage
-        .from("pages")
-        .upload(fileName, compressed);
+      if (locked) {
+        const formData =
+          new FormData();
 
-      if (error) {
-        console.error("Page upload error:", error);
-
-        alert(
-          `Failed to upload page ${i + 1}: ${error.message}`
+        formData.append(
+          "file",
+          compressed
         );
 
-        setUploading(false);
-        return;
+        formData.append(
+          "chapterNumber",
+          chapterNumber
+        );
+
+        formData.append(
+          "pageNumber",
+          String(pageNumber)
+        );
+
+        const response = await fetch(
+          "/api/creator/premium-page-upload",
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ??
+              `Failed to upload premium page ${pageNumber}.`
+          );
+        }
+
+        newPages.push(
+          result.previewUrl
+        );
+
+        newPaths.push(
+          result.path
+        );
+
+        uploadedFiles.push({
+          bucket: "premium-pages",
+          path: result.path,
+        });
+
+      } else {
+        // ----------------------------------------
+        // FREE
+        // ----------------------------------------
+
+        const extension =
+          file.name
+            .split(".")
+            .pop()
+            ?.toLowerCase() || "jpg";
+
+        const fileName =
+          `chapter-${chapterNumber}-page-${String(
+            pageNumber
+          ).padStart(
+            2,
+            "0"
+          )}-${crypto.randomUUID()}.${extension}`;
+
+        const { error } =
+          await supabase.storage
+            .from("pages")
+            .upload(
+              fileName,
+              compressed
+            );
+
+        if (error) {
+          throw new Error(
+            error.message
+          );
+        }
+
+        const { data } =
+          supabase.storage
+            .from("pages")
+            .getPublicUrl(
+              fileName
+            );
+
+        newPages.push(
+          data.publicUrl
+        );
+
+        newPaths.push(
+          data.publicUrl
+        );
+
+        uploadedFiles.push({
+          bucket: "pages",
+          path: fileName,
+        });
       }
 
-      const { data } = supabase.storage
-        .from("pages")
-        .getPublicUrl(fileName);
-
-      newPages.push(data.publicUrl);
-
-      setUploadProgress(i + 1);
+      setUploadProgress(
+        i + 1
+      );
     }
 
     // ----------------------------------------
-    // 2. Replace the page list locally
+    // 2. Replace local arrays
     // ----------------------------------------
 
     setPageImages(newPages);
+    setPagePaths(newPaths);
     setHasUnsavedChanges(true);
 
     // ----------------------------------------
-    // 3. Delete OLD pages from Storage
+    // 3. Delete OLD pages
     // ----------------------------------------
 
-    for (const oldUrl of oldPages) {
+    for (const oldPath of oldPaths) {
+      if (!oldPath) continue;
+
       if (
-        oldUrl &&
-        oldUrl.startsWith("http")
+        oldPath.startsWith("http")
       ) {
-        await removeStorageFile(
-          oldUrl,
-          "pages"
+        await removePublicPage(
+          getStoragePath(
+            oldPath,
+            "pages"
+          ) ?? ""
+        );
+      } else {
+        await removePremiumPage(
+          oldPath
         );
       }
     }
@@ -505,17 +1025,35 @@ export default function EditChapter() {
     alert(
       `All pages replaced successfully! ${newPages.length} pages uploaded.`
     );
-
   } catch (error) {
     console.error(
       "Replace all pages error:",
       error
     );
 
+    // Clean up newly uploaded files
+    // if anything failed.
+    for (const uploaded of uploadedFiles) {
+      if (
+        uploaded.bucket ===
+        "premium-pages"
+      ) {
+        await removePremiumPage(
+          uploaded.path
+        );
+      } else {
+        await removePublicPage(
+          uploaded.path
+        );
+      }
+    }
+
     setUploading(false);
 
     alert(
-      "Something went wrong while replacing all pages."
+      error instanceof Error
+        ? error.message
+        : "Something went wrong while replacing all pages."
     );
   }
 
@@ -549,11 +1087,76 @@ export default function EditChapter() {
         data.cover_image ?? ""
       );
 
-      setPageImages(
-        Array.isArray(data.page_images)
-          ? data.page_images
-          : []
+      const storedPages = Array.isArray(
+  data.page_images
+)
+  ? data.page_images
+  : [];
+
+const displayPages: string[] = [];
+const storedPaths: string[] = [];
+
+for (const page of storedPages) {
+  if (
+    typeof page !== "string" ||
+    !page.trim()
+  ) {
+    continue;
+  }
+
+  // Existing public page.
+  if (page.startsWith("http")) {
+    displayPages.push(page);
+    storedPaths.push(page);
+    continue;
+  }
+
+  // Private premium page.
+  storedPaths.push(page);
+
+  try {
+    const response = await fetch(
+      "/api/creator/premium-page-url",
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+        body: JSON.stringify({
+          path: page,
+        }),
+        cache: "no-store",
+      }
+    );
+
+    const result =
+      await response.json();
+
+    if (
+      response.ok &&
+      result?.signedUrl
+    ) {
+      displayPages.push(
+        result.signedUrl
       );
+    } else {
+      console.error(
+        "Premium page preview failed:",
+        result?.error
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Premium page preview error:",
+      error
+    );
+  }
+}
+
+setPagePaths(storedPaths);
+setPageImages(displayPages);
 
       setPublished(
         Boolean(data.published)
@@ -599,31 +1202,35 @@ export default function EditChapter() {
    * Save chapter metadata and image URLs.
    */
   async function saveChapter() {
-    const { error } = await supabase
-      .from("chapters")
-      .update({
-        chapter: Number(chapterNumber),
-        title,
-        description,
-        pages: pageImages.length,
-        cover_image: coverImage,
-        page_images: pageImages,
-        published,
-        locked,
-      })
-      .eq("id", chapterId);
+  const { error } = await supabase
+    .from("chapters")
+    .update({
+      chapter: Number(chapterNumber),
+      title,
+      description,
+      pages: pagePaths.length,
+      cover_image: coverImage,
+      page_images: pagePaths,
+      published,
+      locked,
+    })
+    .eq("id", chapterId);
 
-    if (error) {
-      alert(error.message);
-      return;
-    }
-
-    alert("Chapter updated successfully!");
-
-    setHasUnsavedChanges(false);
-
-    router.push("/creator/chapters");
+  if (error) {
+    alert(error.message);
+    return;
   }
+
+  alert(
+    "Chapter updated successfully!"
+  );
+
+  setHasUnsavedChanges(false);
+
+  router.push(
+    "/creator/chapters"
+  );
+}
 
   /*
    * Delete the entire chapter AND all of its Storage files.
@@ -1038,12 +1645,22 @@ export default function EditChapter() {
                     : "FREE"
                 }
                 onChange={(e) => {
-                  setLocked(
-                    e.target.value === "PREMIUM"
-                  );
+  const newLocked =
+    e.target.value === "PREMIUM";
 
-                  setHasUnsavedChanges(true);
-                }}
+  if (
+    newLocked !== locked &&
+    pagePaths.length > 0
+  ) {
+    alert(
+      "Please remove all existing manga pages before changing FREE/PREMIUM."
+    );
+    return;
+  }
+
+  setLocked(newLocked);
+  setHasUnsavedChanges(true);
+}}
                 className="w-full bg-zinc-900 rounded-xl p-4 border border-yellow-500/30"
               >
 

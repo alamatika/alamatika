@@ -1,5 +1,4 @@
 
-import { cookies } from "next/headers";
 import { createSupabaseServerClient } from "../../../lib/supabaseServer";
 import Navbar from "../../../components/navbar";
 import ChapterNavigation from "../../../components/ChapterNavigation";
@@ -8,6 +7,7 @@ import ChapterComments from "../../../components/ChapterComments";
 import ChapterImages from "../../../components/ChapterImages";
 import ChapterUnlockButton from "../../../components/ChapterUnlockButton";
 import { notFound } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
 
 
 
@@ -19,23 +19,24 @@ export default async function ChapterPage({
 }) {
 
   const supabase = await createSupabaseServerClient();
-
-  const cookieStore = await cookies();
-  console.log("ALL COOKIES:", cookieStore.getAll());
+  const storageAdmin =
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    }
+  );
 
   const { chapter } = await params;
   const chapterNumber = Number(chapter.replace("chapter-", ""));
    const {
-  data: { session },
-  error: sessionError,
-} = await supabase.auth.getSession();
+  data: { user },
+} = await supabase.auth.getUser();
 
-console.log("SERVER SESSION:", session);
-console.log("SESSION ERROR:", sessionError);
-
-const user = session?.user ?? null;
-
-console.log("SERVER USER:", user);
 
   const { data: chapterData, error } = await supabase
   .from("chapters")
@@ -47,13 +48,49 @@ if (error || !chapterData) {
   notFound();
 }
 
-const { count: totalChapters } = await supabase
-  .from("chapters")
-  .select("*", {
-    count: "exact",
-    head: true,
-  })
-  .eq("published", true);
+const { data: chapterSeason, error: seasonError } =
+  await supabase
+    .from("seasons")
+    .select("story_id")
+    .eq("id", chapterData.season_id)
+    .maybeSingle();
+
+if (seasonError || !chapterSeason) {
+  console.error(
+    "Chapter season lookup error:",
+    seasonError
+  );
+  notFound();
+}
+
+const { data: storyData, error: storyError } =
+  await supabase
+    .from("stories")
+    .select(
+      "id, watermark_enabled, watermark_text"
+    )
+    .eq("id", chapterSeason.story_id)
+    .maybeSingle();
+
+if (storyError) {
+  console.error(
+    "Story watermark settings error:",
+    storyError
+  );
+}
+
+const { count: totalChapters } =
+  await supabase
+    .from("chapters")
+    .select("*", {
+      count: "exact",
+      head: true,
+    })
+    .eq(
+      "season_id",
+      chapterData.season_id
+    )
+    .eq("published", true);
 
 let alreadyUnlocked = false;
 let credits = 0;
@@ -68,7 +105,6 @@ if (user) {
 
   alreadyUnlocked = !!unlock;
 
-  console.log("UNLOCK FOUND:", unlock);
 
 const { data: profile } = await supabase
   .from("profiles")
@@ -134,11 +170,13 @@ if (chapterData.locked && !alreadyUnlocked) {
 
 ) : (
   <a
-    href={`/wallet?redirect=/read/chapter-${chapterNumber}`}
-    className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
-  >
-    💎 Buy Credits
-  </a>
+  href={`/wallet?redirect=${encodeURIComponent(
+    `/read/story/${chapterSeason.story_id}/season/${chapterData.season_id}/chapter-${chapterNumber}`
+  )}`}
+  className="inline-block px-8 py-4 rounded-xl bg-blue-600 hover:bg-blue-500 transition"
+>
+  💎 Buy Credits
+</a>
 )}
 
       </div>
@@ -147,6 +185,77 @@ if (chapterData.locked && !alreadyUnlocked) {
   );
 }
 
+let readerImages =
+  chapterData.page_images ?? [];
+
+if (chapterData.locked) {
+  const premiumPaths = (
+  chapterData.page_images ?? []
+).filter(
+  (item: unknown): item is string =>
+    typeof item === "string" &&
+    !item.startsWith("http")
+);
+
+  const oldPublicUrls = (
+  chapterData.page_images ?? []
+).filter(
+  (item: unknown): item is string =>
+    typeof item === "string" &&
+    item.startsWith("http")
+);
+
+  let signedUrls: string[] = [];
+
+  if (premiumPaths.length > 0) {
+    const {
+      data: signedPages,
+      error: signedPagesError,
+    } = await storageAdmin.storage
+      .from("premium-pages")
+      .createSignedUrls(
+        premiumPaths,
+        60 * 10
+      );
+
+    if (signedPagesError) {
+      console.error(
+        "Premium page URL error:",
+        signedPagesError
+      );
+
+      notFound();
+    }
+
+    signedUrls =
+      signedPages
+        ?.map(
+          (item) => item.signedUrl
+        )
+        .filter(
+          (
+            url
+          ): url is string =>
+            !!url
+        ) ?? [];
+  }
+
+  readerImages = [
+    ...oldPublicUrls,
+    ...signedUrls,
+  ];
+}
+
+
+
+const readerWatermark =
+  chapterData.locked &&
+  storyData?.watermark_enabled
+    ? (
+        storyData.watermark_text?.trim() ||
+        "ALAMATIKA • © 2026"
+      )
+    : undefined;
 
   return (
     <main className="min-h-screen bg-black text-white pt-28">
@@ -161,25 +270,20 @@ if (chapterData.locked && !alreadyUnlocked) {
 
         <div id="reader">
   <ChapterImages
-    images={chapterData.page_images ?? []}
+    images={readerImages}
+    watermark={readerWatermark}
   />
 </div>
 
-        
-
-      </div>
-      
-<div className="max-w-5xl mx-auto py-8">
-  
-
 </div>
 
+<div className="max-w-5xl mx-auto py-8">
+</div>
 
 <ChapterNavigation
   current={chapterNumber}
   total={totalChapters ?? 0}
 />
-
 <hr className="max-w-5xl mx-auto my-10 border-zinc-800" />
 
     <ChapterRating chapter={chapterNumber} />

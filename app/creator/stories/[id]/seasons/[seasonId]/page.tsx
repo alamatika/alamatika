@@ -54,11 +54,15 @@ export default async function SeasonPage({ params }: Props) {
 
   // Get chapters belonging to this season
   const { data: chapters, error: chaptersError } =
-    await supabase
-      .from("chapters")
-      .select("*")
-      .eq("season_id", season.id)
-      .order("chapter", { ascending: true });
+  await supabase
+    .from("chapters")
+    .select(
+      "id, chapter, title, published, locked"
+    )
+    .eq("season_id", season.id)
+    .order("chapter", {
+      ascending: true,
+    });
 
   return (
     <CreatorGuard>

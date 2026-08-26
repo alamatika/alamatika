@@ -18,6 +18,11 @@ export default function EditStory() {
   const [description, setDescription] = useState("");
   const [coverImage, setCoverImage] = useState("");
   const [published, setPublished] = useState(true);
+  const [watermarkEnabled, setWatermarkEnabled] =
+  useState(true);
+
+const [watermarkText, setWatermarkText] =
+  useState("ALAMATIKA • © 2026");
 
   const [loading, setLoading] = useState(true);
   const [uploadingCover, setUploadingCover] = useState(false);
@@ -41,6 +46,14 @@ export default function EditStory() {
       setDescription(data.description ?? "");
       setCoverImage(data.cover_image ?? "");
       setPublished(data.published ?? true);
+      setWatermarkEnabled(
+  data.watermark_enabled ?? true
+);
+
+setWatermarkText(
+  data.watermark_text ??
+    "ALAMATIKA • © 2026"
+);
       setLoading(false);
     }
 
@@ -203,11 +216,16 @@ export default function EditStory() {
       const { error } = await supabase
         .from("stories")
         .update({
-          title: title.trim(),
-          description:
-            description.trim() || null,
-          published,
-        })
+  title: title.trim(),
+  description:
+    description.trim() || null,
+  published,
+  watermark_enabled:
+    watermarkEnabled,
+  watermark_text:
+    watermarkText.trim() ||
+    "ALAMATIKA • © 2026",
+})
         .eq("id", storyId);
 
       if (error) {
@@ -323,6 +341,66 @@ export default function EditStory() {
               </div>
 
             </div>
+
+            {/* WATERMARK */}
+
+<div className="bg-zinc-900 rounded-2xl p-6 sm:p-8">
+
+  <h2 className="text-2xl font-bold text-yellow-400 mb-6">
+    🛡️ Premium Watermark
+  </h2>
+
+  <div className="flex flex-wrap gap-3 mb-6">
+
+    <button
+      type="button"
+      onClick={() =>
+        setWatermarkEnabled(true)
+      }
+      className={`px-5 py-3 rounded-xl font-bold transition ${
+        watermarkEnabled
+          ? "bg-green-600 text-white"
+          : "bg-zinc-800 text-gray-400"
+      }`}
+    >
+      ✅ Active
+    </button>
+
+    <button
+      type="button"
+      onClick={() =>
+        setWatermarkEnabled(false)
+      }
+      className={`px-5 py-3 rounded-xl font-bold transition ${
+        !watermarkEnabled
+          ? "bg-red-600 text-white"
+          : "bg-zinc-800 text-gray-400"
+      }`}
+    >
+      ❌ Inactive
+    </button>
+
+  </div>
+
+  <label className="block text-sm text-gray-400 mb-2">
+    Watermark Text
+  </label>
+
+  <input
+    type="text"
+    value={watermarkText}
+    onChange={(e) =>
+      setWatermarkText(e.target.value)
+    }
+    placeholder="ALAMATIKA • © 2026"
+    className="w-full bg-zinc-800 rounded-xl p-4 border border-yellow-500/30 outline-none focus:border-yellow-500"
+  />
+
+  <p className="text-gray-500 text-sm mt-3">
+    This watermark appears on premium chapter pages.
+  </p>
+
+</div>
 
             {/* COVER */}
 

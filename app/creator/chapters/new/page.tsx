@@ -33,7 +33,13 @@ function NewChapterContent() {
   const [locked, setLocked] = useState(false);
 
   const [pageImages, setPageImages] = useState<string[]>([]);
-  const [pageFiles, setPageFiles] = useState<string[]>([]);
+  type UploadedPageFile = {
+  bucket: "pages" | "premium-pages";
+  path: string;
+};
+
+const [pageFiles, setPageFiles] =
+  useState<UploadedPageFile[]>([]);
 
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingPages, setUploadingPages] = useState(false);
@@ -135,6 +141,40 @@ const [selectedSeasonId, setSelectedSeasonId] =
     }
   }
 
+  async function removePremiumPage(path: string) {
+  if (!path) return;
+
+  try {
+    const response = await fetch(
+      "/api/creator/premium-page-delete",
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          path,
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      console.error(
+        "Premium page cleanup failed:",
+        result?.error
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Premium page cleanup error:",
+      error
+    );
+  }
+}
+
   async function uploadCover(
     e: React.ChangeEvent<HTMLInputElement>
   ) {
@@ -200,100 +240,269 @@ const [selectedSeasonId, setSelectedSeasonId] =
   }
 
   async function uploadPages(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const files = Array.from(e.target.files ?? []);
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const files = Array.from(
+    e.target.files ?? []
+  );
 
-    if (files.length === 0) return;
+  if (files.length === 0) return;
 
-    setUploadingPages(true);
+  setUploadingPages(true);
 
-    const uploadedUrls: string[] = [];
-    const uploadedFiles: string[] = [];
+  const uploadedUrls: string[] = [];
+  const uploadedFiles: UploadedPageFile[] = [];
 
-    try {
-      for (const file of files) {
-        const compressed = await imageCompression(file, {
+  try {
+    for (const file of files) {
+      const compressed =
+        await imageCompression(file, {
           maxWidthOrHeight: 1800,
-          maxSizeMB: 1,
+          maxSizeMB: 2,
           useWebWorker: true,
-          initialQuality: 0.85,
+          initialQuality: 0.95,
         });
 
-        const extension =
-          file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const extension =
+        file.name
+          .split(".")
+          .pop()
+          ?.toLowerCase() || "jpg";
 
-        const pageNumber =
-          uploadedFiles.length + 1;
+      const pageNumber =
+        uploadedFiles.length + 1;
 
-        const safeName =
-          `chapter-${chapterNumber || "new"}-page-${String(
-            pageNumber
-          ).padStart(2, "0")}-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2)}.${extension}`;
+      /*
+       * PREMIUM CHAPTER
+       * Upload through the secure Creator API.
+       */
+      if (locked) {
+        const formData =
+          new FormData();
 
-        const { error } = await supabase.storage
-          .from("pages")
-          .upload(safeName, compressed);
+        formData.append(
+          "file",
+          compressed
+        );
 
-        if (error) {
-          await removeStorageFiles(
-            "pages",
-            uploadedFiles
+        formData.append(
+          "chapterNumber",
+          chapterNumber || "new"
+        );
+
+        formData.append(
+          "pageNumber",
+          String(pageNumber)
+        );
+
+        const response = await fetch(
+          "/api/creator/premium-page-upload",
+          {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          await Promise.all(
+  uploadedFiles.map(async (uploaded) => {
+    if (
+      uploaded.bucket ===
+      "premium-pages"
+    ) {
+      await removePremiumPage(
+        uploaded.path
+      );
+    } else {
+      await removeStorageFiles(
+        uploaded.bucket,
+        [uploaded.path]
+      );
+    }
+  })
+);
+
+          alert(
+            result?.error ??
+              "Failed to upload premium page."
           );
 
-          alert(error.message);
           return;
         }
 
-        const {
-          data: { publicUrl },
-        } = supabase.storage
-          .from("pages")
-          .getPublicUrl(safeName);
+        uploadedUrls.push(
+          result.previewUrl
+        );
 
-        uploadedUrls.push(publicUrl);
-        uploadedFiles.push(safeName);
+        uploadedFiles.push({
+          bucket:
+            "premium-pages",
+          path: result.path,
+        });
+
+        continue;
       }
 
-      setPageImages(uploadedUrls);
-      setPageFiles(uploadedFiles);
+      /*
+       * FREE CHAPTER
+       * Keep the existing public upload behavior.
+       */
+      const safeName =
+        `chapter-${chapterNumber || "new"}-page-${String(
+          pageNumber
+        ).padStart(2, "0")}-${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${extension}`;
 
-      alert("Pages uploaded!");
+      const { error } =
+        await supabase.storage
+          .from("pages")
+          .upload(
+            safeName,
+            compressed
+          );
+
+      if (error) {
+        await Promise.all(
+  uploadedFiles.map(async (uploaded) => {
+    if (
+      uploaded.bucket ===
+      "premium-pages"
+    ) {
+      await removePremiumPage(
+        uploaded.path
+      );
+    } else {
+      await removeStorageFiles(
+        uploaded.bucket,
+        [uploaded.path]
+      );
+    }
+  })
+);
+
+        alert(error.message);
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage
+        .from("pages")
+        .getPublicUrl(
+          safeName
+        );
+
+      uploadedUrls.push(
+        publicUrl
+      );
+
+      uploadedFiles.push({
+        bucket: "pages",
+        path: safeName,
+      });
+    }
+
+    setPageImages(
+      uploadedUrls
+    );
+
+    setPageFiles(
+      uploadedFiles
+    );
+
+    alert(
+      locked
+        ? "Premium pages uploaded!"
+        : "Pages uploaded!"
+    );
+
+  } catch (error) {
+    console.error(error);
+
+    await Promise.all(
+      uploadedFiles.map(
+        async (uploaded) => {
+          await supabase.storage
+            .from(uploaded.bucket)
+            .remove([
+              uploaded.path,
+            ]);
+        }
+      )
+    );
+
+    alert(
+      locked
+        ? "Failed to upload premium manga pages."
+        : "Failed to upload manga pages."
+    );
+
+  } finally {
+    setUploadingPages(false);
+    e.target.value = "";
+  }
+}
+
+  async function removePage(index: number) {
+  const file = pageFiles[index];
+
+  if (!file) return;
+
+  if (file.bucket === "premium-pages") {
+    try {
+      const response = await fetch(
+        "/api/creator/premium-page-delete",
+        {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            path: file.path,
+          }),
+        }
+      );
+
+      const result =
+        await response.json();
+
+      if (!response.ok) {
+        alert(
+          result?.error ??
+            "Failed to remove premium page."
+        );
+        return;
+      }
     } catch (error) {
       console.error(error);
 
-      await removeStorageFiles(
-        "pages",
-        uploadedFiles
+      alert(
+        "Failed to remove premium page."
       );
-
-      alert("Failed to upload manga pages.");
-    } finally {
-      setUploadingPages(false);
-
-      e.target.value = "";
+      return;
     }
-  }
-
-  async function removePage(index: number) {
-    const fileName = pageFiles[index];
-
-    if (fileName) {
-      await removeStorageFiles("pages", [
-        fileName,
-      ]);
-    }
-
-    setPageImages((current) =>
-      current.filter((_, i) => i !== index)
-    );
-
-    setPageFiles((current) =>
-      current.filter((_, i) => i !== index)
+  } else {
+    await removeStorageFiles(
+      file.bucket,
+      [file.path]
     );
   }
+
+  setPageImages((current) =>
+    current.filter((_, i) => i !== index)
+  );
+
+  setPageFiles((current) =>
+    current.filter((_, i) => i !== index)
+  );
+}
 
   async function publishChapter() {
     if (!selectedStoryId || !selectedSeasonId) {
@@ -370,7 +579,11 @@ const { error } = await supabase
         description,
         pages: pageImages.length,
         cover_image: coverImage,
-        page_images: pageImages,
+        page_images: locked
+  ? pageFiles.map(
+      (file) => file.path
+    )
+  : pageImages,
         published,
         locked,
 
@@ -393,10 +606,23 @@ const { error } = await supabase
           : []
       );
 
-      await removeStorageFiles(
-        "pages",
-        pageFiles
+      await Promise.all(
+  pageFiles.map(async (file) => {
+    if (
+      file.bucket ===
+      "premium-pages"
+    ) {
+      await removePremiumPage(
+        file.path
       );
+    } else {
+      await removeStorageFiles(
+        file.bucket,
+        [file.path]
+      );
+    }
+  })
+);
 
       alert(error.message);
       return;
@@ -774,29 +1000,29 @@ const { error } = await supabase
               <div className="space-y-4">
 
                 <select
-                  value={
-                    locked
-                      ? "PREMIUM"
-                      : "FREE"
-                  }
-                  onChange={(e) =>
-                    setLocked(
-                      e.target.value ===
-                        "PREMIUM"
-                    )
-                  }
-                  className="w-full bg-zinc-900 rounded-xl p-4 border border-yellow-500/30"
-                >
+  value={locked ? "PREMIUM" : "FREE"}
+  onChange={(e) => {
+    if (pageFiles.length > 0) {
+      alert(
+        "Please remove the uploaded manga pages before changing FREE/PREMIUM."
+      );
+      return;
+    }
 
-                  <option value="FREE">
-                    FREE
-                  </option>
+    setLocked(
+      e.target.value === "PREMIUM"
+    );
+  }}
+  className="w-full bg-zinc-900 rounded-xl p-4 border border-yellow-500/30"
+>
+  <option value="FREE">
+    FREE
+  </option>
 
-                  <option value="PREMIUM">
-                    PREMIUM
-                  </option>
-
-                </select>
+  <option value="PREMIUM">
+    PREMIUM
+  </option>
+</select>
 
                 <select
                   value={

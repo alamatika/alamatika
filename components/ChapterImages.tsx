@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 
 export default function ChapterImages({
   images,
+  watermark,
 }: {
   images: string[];
+  watermark?: string;
 }) {
   const [loadedImages, setLoadedImages] = useState<boolean[]>(
     []
@@ -118,6 +120,9 @@ export default function ChapterImages({
             <img
               src={image}
               alt={`Page ${index + 1}`}
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
               loading={
                 isFirstPage
                   ? "eager"
@@ -148,6 +153,51 @@ export default function ChapterImages({
                 }
               `}
             />
+           {watermark && isLoaded && (
+  <div
+    className="
+      pointer-events-none
+      absolute
+      inset-0
+      z-10
+      overflow-hidden
+      select-none
+    "
+    aria-hidden="true"
+  >
+    <div
+      className="
+        absolute
+        inset-0
+        grid
+        grid-cols-2
+        grid-rows-2
+        place-items-center
+        rotate-[-18deg]
+      "
+    >
+      {Array.from({ length: 4 }).map(
+        (_, watermarkIndex) => (
+          <span
+  key={watermarkIndex}
+  className="
+    whitespace-nowrap
+    text-[10px]
+    sm:text-xs
+    font-bold
+    tracking-[0.15em]
+    text-white
+    opacity-[0.12]
+    drop-shadow-[0_0_4px_rgba(0,0,0,0.9)]
+  "
+>
+  {watermark}
+</span>
+        )
+      )}
+    </div>
+  </div>
+)}
           </div>
         );
       })}
