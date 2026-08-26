@@ -2,6 +2,7 @@ import Link from "next/link";
 import { supabase } from "../../../lib/supabaseClient";
 import Navbar from "../../../components/navbar";
 import CreatorGuard from "../../../components/CreatorGuard";
+import DeleteChapterButton from "../../../components/DeleteChapterButton";
 
 export default async function Chapters() {
   const { data: chapters, error } = await supabase
@@ -298,7 +299,11 @@ const premiumChapters =
                             📕 Season
                           </Link>
                         )}
-
+                        <DeleteChapterButton
+  chapterId={chapter.id}
+  chapterNumber={chapter.chapter}
+  chapterTitle={chapter.title}
+/>
                       </div>
 
                     </div>

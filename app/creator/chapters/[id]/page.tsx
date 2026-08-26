@@ -1236,26 +1236,30 @@ setPageImages(displayPages);
    * Delete the entire chapter AND all of its Storage files.
    */
   async function deleteChapter() {
-    const confirmed = window.confirm(
-      "Are you sure you want to permanently delete this chapter?"
-    );
+  const confirmed = window.confirm(
+    "Are you sure you want to permanently delete this chapter?"
+  );
 
-    if (!confirmed) return;
+  if (!confirmed) return;
 
+  try {
     /*
      * Get the latest chapter data first.
-     * This makes sure we delete the actual files currently
-     * associated with the database record.
      */
     const { data: chapter, error: fetchError } =
       await supabase
         .from("chapters")
-        .select("cover_image, page_images")
+        .select(
+          "cover_image, page_images"
+        )
         .eq("id", chapterId)
         .single();
 
-    if (fetchError) {
-      alert(fetchError.message);
+    if (fetchError || !chapter) {
+      alert(
+        fetchError?.message ??
+          "Chapter not found."
+      );
       return;
     }
 
@@ -1263,7 +1267,7 @@ setPageImages(displayPages);
      * Delete cover.
      */
     if (
-      chapter?.cover_image &&
+      chapter.cover_image &&
       chapter.cover_image.startsWith("http")
     ) {
       await removeStorageFile(
@@ -1276,32 +1280,73 @@ setPageImages(displayPages);
      * Delete every manga page.
      */
     const pagesToDelete =
-      Array.isArray(chapter?.page_images)
+      Array.isArray(chapter.page_images)
         ? chapter.page_images
         : [];
 
-    for (const pageUrl of pagesToDelete) {
+    for (const pagePath of pagesToDelete) {
       if (
-        pageUrl &&
-        pageUrl.startsWith("http")
+        typeof pagePath !== "string" ||
+        !pagePath
       ) {
-        await removeStorageFile(
-          pageUrl,
-          "pages"
-        );
+        continue;
       }
+
+      /*
+       * PREMIUM PAGE
+       * Private storage path.
+       */
+      if (
+        !pagePath.startsWith("http")
+      ) {
+        const response = await fetch(
+          "/api/creator/premium-page-delete",
+          {
+            method: "POST",
+            credentials: "include",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              path: pagePath,
+            }),
+          }
+        );
+
+        const result =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result?.error ??
+              `Failed to delete premium page: ${pagePath}`
+          );
+        }
+
+        continue;
+      }
+
+      /*
+       * FREE / PUBLIC PAGE
+       */
+      await removeStorageFile(
+        pagePath,
+        "pages"
+      );
     }
 
     /*
      * Finally delete the database record.
      */
-    const { error } = await supabase
-      .from("chapters")
-      .delete()
-      .eq("id", chapterId);
+    const { error: deleteError } =
+      await supabase
+        .from("chapters")
+        .delete()
+        .eq("id", chapterId);
 
-    if (error) {
-      alert(error.message);
+    if (deleteError) {
+      alert(deleteError.message);
       return;
     }
 
@@ -1311,8 +1356,22 @@ setPageImages(displayPages);
 
     setHasUnsavedChanges(false);
 
-    router.push("/creator/chapters");
+    router.push(
+      "/creator/chapters"
+    );
+  } catch (error) {
+    console.error(
+      "Delete chapter error:",
+      error
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong while deleting the chapter."
+    );
   }
+}
 
   /*
    * Protect navigation when there are unsaved changes.

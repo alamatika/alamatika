@@ -3,6 +3,7 @@ import Link from "next/link";
 import Navbar from "../../../../../../components/navbar";
 import CreatorGuard from "../../../../../../components/CreatorGuard";
 import { supabase } from "../../../../../../lib/supabaseClient";
+import DeleteSeasonButton from "../../../../../../components/DeleteSeasonButton";
 
 type Props = {
   params: Promise<{
@@ -122,17 +123,26 @@ export default async function SeasonPage({ params }: Props) {
       </p>
 
       <Link
-        href={`/creator/stories/${story.id}/seasons/${season.id}/edit`}
-        className="inline-flex mt-3 px-3 py-2 rounded-lg border border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white transition text-sm font-semibold"
-      >
-        ✏ Edit Season
-      </Link>
+  href={`/creator/stories/${story.id}/seasons/${season.id}/edit`}
+  className="inline-flex px-3 py-2 rounded-lg border border-blue-500 text-blue-400 hover:bg-blue-500 hover:text-white transition text-sm font-semibold"
+>
+  ✏ Edit Season
+</Link>
+
+<DeleteSeasonButton
+  storyId={story.id}
+  seasonId={season.id}
+  seasonNumber={season.season_number}
+  seasonTitle={season.title}
+/>
 
     </div>
 
   </div>
 
 </div>
+
+
 
           {/* CHAPTER SECTION */}
 
@@ -240,21 +250,21 @@ export default async function SeasonPage({ params }: Props) {
 
                     <div className="flex flex-wrap gap-3">
 
-                      <Link
-                        href={`/creator/chapters/${chapter.id}`}
-                        className="px-4 py-3 rounded-lg border border-yellow-500 hover:bg-yellow-500 hover:text-black transition"
-                      >
-                        ✏ Edit
-                      </Link>
+  <Link
+    href={`/creator/chapters/${chapter.id}`}
+    className="px-4 py-3 rounded-lg border border-yellow-500 hover:bg-yellow-500 hover:text-black transition"
+  >
+    ✏ Edit
+  </Link>
 
-                      <Link
-                        href={`/read/story/${story.id}/season/${season.id}/chapter-${chapter.chapter}`}
-                        className="px-4 py-3 rounded-lg border border-blue-500 hover:bg-blue-500 transition"
-                      >
-                        👁 View
-                      </Link>
+  <Link
+    href={`/read/story/${story.id}/season/${season.id}/chapter-${chapter.chapter}`}
+    className="px-4 py-3 rounded-lg border border-blue-500 hover:bg-blue-500 transition"
+  >
+    👁 View
+  </Link>
 
-                    </div>
+</div>
 
                   </div>
 
