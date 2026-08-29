@@ -64,6 +64,10 @@ export const metadata: Metadata = {
       "Read Alamatika, a Filipino mythology manga inspired by ancient legends.",
     images: ["/logos/alamatika-logo-gold1.png"],
   },
+    verification: {
+    google:
+      "Jp3S9E0X5MoZFvpl_C9nVpXx4XkJJir4BzyKLJwI_9A",
+  },
 };
 
 export default function RootLayout({
