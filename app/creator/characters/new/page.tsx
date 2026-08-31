@@ -5,6 +5,7 @@ import CreatorGuard from "../../../../components/CreatorGuard";
 import Navbar from "../../../../components/navbar";
 import { useState } from "react";
 import { supabase } from "../../../../lib/supabaseClient";
+import imageCompression from "browser-image-compression";
 
 function getStoragePath(publicUrl: string) {
   if (!publicUrl) return null;
@@ -70,30 +71,63 @@ export default function NewCharacter() {
     setPortrait("");
   }
 
-  async function handlePortraitUpload(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
+   async function handlePortraitUpload(
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const file = e.target.files?.[0];
 
-    if (!file) return;
+  if (!file) return;
 
-    const filename = `${Date.now()}-${file.name}`;
+  try {
+    const compressed =
+  await imageCompression(file, {
+    maxWidthOrHeight: 1600,
+    maxSizeMB: 0.8,
+    useWebWorker: true,
+    initialQuality: 0.92,
+  });
+
+    const extension =
+      compressed.type
+        .split("/")
+        .pop()
+        ?.toLowerCase() || "jpg";
+
+    const filename =
+      `${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
     const { error } = await supabase.storage
       .from("characters")
-      .upload(filename, file);
+      .upload(
+        filename,
+        compressed
+      );
 
     if (error) {
       alert(error.message);
       return;
     }
 
-    const { data } = supabase.storage
-      .from("characters")
-      .getPublicUrl(filename);
+    const { data } =
+      supabase.storage
+        .from("characters")
+        .getPublicUrl(filename);
 
     setPortrait(data.publicUrl);
+
+  } catch (error) {
+    console.error(
+      "Character portrait upload error:",
+      error
+    );
+
+    alert(
+      "Something went wrong while uploading the portrait."
+    );
+  } finally {
+    e.target.value = "";
   }
+}
 
   return (
     <CreatorGuard>

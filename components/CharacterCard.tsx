@@ -17,13 +17,15 @@ export default function CharacterCard({
   return (
     <div className="bg-black/50 backdrop-blur-md rounded-3xl overflow-hidden border border-yellow-500/20 hover:scale-105 transition duration-300">
 
-      <Image
-  src={image}
-  alt={name}
-  width={240}
-  height={340}
-  className="w-full h-auto object-cover rounded-t-3xl"
-/>
+      <div className="w-full h-72 md:h-80 bg-zinc-900 rounded-t-3xl overflow-hidden flex items-center justify-center">
+  <Image
+    src={image}
+    alt={name}
+    width={240}
+    height={320}
+    className="w-full h-full object-contain"
+  />
+</div>
 
       <div className="p-3 md:p-4 text-center">
 

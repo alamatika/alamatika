@@ -6,6 +6,7 @@ import { supabase } from "../../../../lib/supabaseClient";
 import { useParams } from "next/navigation";
 import CreatorGuard from "../../../../components/CreatorGuard";
 import Navbar from "../../../../components/navbar";
+import imageCompression from "browser-image-compression";
 
 type Character = {
   id: number;
@@ -176,34 +177,53 @@ export default function EditCharacterPage() {
   }
 
   async function uploadPortrait(
-    e: React.ChangeEvent<HTMLInputElement>
-  ) {
-    const file = e.target.files?.[0];
+  e: React.ChangeEvent<HTMLInputElement>
+) {
+  const file = e.target.files?.[0];
 
-    if (!file) return;
+  if (!file) return;
 
+  try {
     const oldPortrait = portrait;
 
+    const compressed =
+      await imageCompression(file, {
+        maxWidthOrHeight: 1600,
+maxSizeMB: 0.8,
+useWebWorker: true,
+initialQuality: 0.92,
+      });
+
+    const extension =
+      compressed.type
+        .split("/")
+        .pop()
+        ?.toLowerCase() || "jpg";
+
     const filename =
-      `${Date.now()}-${file.name}`;
+      `${Date.now()}-${crypto.randomUUID()}.${extension}`;
 
     const { error: uploadError } =
       await supabase.storage
         .from("characters")
-        .upload(filename, file);
+        .upload(
+          filename,
+          compressed
+        );
 
     if (uploadError) {
       alert(uploadError.message);
       return;
     }
 
-    const { data } = supabase.storage
-      .from("characters")
-      .getPublicUrl(filename);
+    const { data } =
+      supabase.storage
+        .from("characters")
+        .getPublicUrl(filename);
 
-    const newPortrait = data.publicUrl;
+    const newPortrait =
+      data.publicUrl;
 
-    // Update the database with the new portrait
     const { error: updateError } =
       await supabase
         .from("characters")
@@ -215,25 +235,38 @@ export default function EditCharacterPage() {
     if (updateError) {
       alert(updateError.message);
 
-      // New file was uploaded but couldn't be linked,
-      // so clean it up.
       await supabase.storage
         .from("characters")
-        .remove([filename]);
+        .remove([
+          filename,
+        ]);
 
       return;
     }
 
     setPortrait(newPortrait);
 
-    // Delete the old file after the new one is safely linked
     if (
       oldPortrait &&
       oldPortrait !== newPortrait
     ) {
-      await deletePortraitFile(oldPortrait);
+      await deletePortraitFile(
+        oldPortrait
+      );
     }
+  } catch (error) {
+    console.error(
+      "Character portrait upload error:",
+      error
+    );
+
+    alert(
+      "Something went wrong while uploading the portrait."
+    );
+  } finally {
+    e.target.value = "";
   }
+}
 
   useEffect(() => {
     async function loadCharacter() {
@@ -311,7 +344,7 @@ export default function EditCharacterPage() {
                     <img
                       src={portrait}
                       alt={name || "Portrait"}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <div className="text-center text-gray-400 p-4">

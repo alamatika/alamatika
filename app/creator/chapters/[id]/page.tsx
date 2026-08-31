@@ -1535,36 +1535,108 @@ setPageImages(displayPages);
 
             </div>
 
-            <label className="inline-block cursor-pointer bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-yellow-400 transition mt-6">
+            <div className="flex flex-wrap gap-3 mt-6">
 
-              📤 Upload Manga Pages
+  {/* UPLOAD PAGES */}
 
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={uploadPages}
-                className="hidden"
-              />
+  <label className="inline-flex cursor-pointer bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-yellow-400 transition items-center">
 
-            </label>
+    📤 Upload Manga Pages
 
-            <label
-  className={`inline-block cursor-pointer bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-500 transition mt-4 sm:mt-6 sm:ml-3 ${
-    uploading ? "opacity-50 pointer-events-none" : ""
-  }`}
->
-  🔄 Change All Pages
+    <input
+      type="file"
+      multiple
+      accept="image/*"
+      onChange={uploadPages}
+      className="hidden"
+    />
 
-  <input
-    type="file"
-    multiple
-    accept="image/*"
-    onChange={replaceAllPages}
-    className="hidden"
-    disabled={uploading}
-  />
-</label>
+  </label>
+
+  {/* CHANGE ALL */}
+
+  <label
+    className={`inline-flex cursor-pointer bg-blue-600 text-white font-bold px-6 py-3 rounded-xl hover:bg-blue-500 transition items-center ${
+      uploading
+        ? "opacity-50 pointer-events-none"
+        : ""
+    }`}
+  >
+    🔄 Change All Pages
+
+    <input
+      type="file"
+      multiple
+      accept="image/*"
+      onChange={replaceAllPages}
+      className="hidden"
+      disabled={uploading}
+    />
+  </label>
+
+  {/* FREE / PREMIUM */}
+
+  <select
+    value={
+      locked
+        ? "PREMIUM"
+        : "FREE"
+    }
+    onChange={(e) => {
+      const newLocked =
+        e.target.value === "PREMIUM";
+
+      if (
+        newLocked !== locked &&
+        pagePaths.length > 0
+      ) {
+        alert(
+          "Please remove all existing manga pages before changing FREE/PREMIUM."
+        );
+        return;
+      }
+
+      setLocked(newLocked);
+      setHasUnsavedChanges(true);
+    }}
+    className="bg-zinc-800 text-white font-bold px-4 py-3 rounded-xl border border-yellow-500/40 focus:outline-none"
+  >
+    <option value="FREE">
+      🆓 FREE
+    </option>
+
+    <option value="PREMIUM">
+      🔒 PREMIUM
+    </option>
+  </select>
+
+  {/* DRAFT / PUBLISHED */}
+
+  <select
+    value={
+      published
+        ? "Published"
+        : "Draft"
+    }
+    onChange={(e) => {
+      setPublished(
+        e.target.value === "Published"
+      );
+
+      setHasUnsavedChanges(true);
+    }}
+    className="bg-zinc-800 text-white font-bold px-4 py-3 rounded-xl border border-yellow-500/40 focus:outline-none"
+  >
+    <option value="Draft">
+      📝 Draft
+    </option>
+
+    <option value="Published">
+      ✅ Published
+    </option>
+  </select>
+
+</div>
 
             <DragDropContext
               onDragEnd={handleDragEnd}
@@ -1684,72 +1756,6 @@ setPageImages(displayPages);
               </Droppable>
 
             </DragDropContext>
-
-          </div>
-
-          {/* PUBLISHING */}
-
-          <div className="bg-zinc-900 rounded-2xl p-8 mt-8">
-
-            <h2 className="text-2xl font-bold text-yellow-400 mb-6">
-              ⚙ Publishing
-            </h2>
-
-            <div className="space-y-4">
-
-              <select
-                value={
-                  locked
-                    ? "PREMIUM"
-                    : "FREE"
-                }
-                onChange={(e) => {
-  const newLocked =
-    e.target.value === "PREMIUM";
-
-  if (
-    newLocked !== locked &&
-    pagePaths.length > 0
-  ) {
-    alert(
-      "Please remove all existing manga pages before changing FREE/PREMIUM."
-    );
-    return;
-  }
-
-  setLocked(newLocked);
-  setHasUnsavedChanges(true);
-}}
-                className="w-full bg-zinc-900 rounded-xl p-4 border border-yellow-500/30"
-              >
-
-                <option>FREE</option>
-                <option>PREMIUM</option>
-
-              </select>
-
-              <select
-                value={
-                  published
-                    ? "Published"
-                    : "Draft"
-                }
-                onChange={(e) => {
-                  setPublished(
-                    e.target.value === "Published"
-                  );
-
-                  setHasUnsavedChanges(true);
-                }}
-                className="w-full bg-zinc-900 rounded-xl p-4 border border-yellow-500/30"
-              >
-
-                <option>Draft</option>
-                <option>Published</option>
-
-              </select>
-
-            </div>
 
           </div>
 
